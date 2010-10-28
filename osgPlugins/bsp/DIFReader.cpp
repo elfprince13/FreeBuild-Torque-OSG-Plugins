@@ -137,7 +137,7 @@ osg::Node *  DIFInteriorObj::buildInteriorNode(){
 	//difRSS->setTextureAttribute(1,blendTexEnv,osg::StateAttribute::ON); // We don't have lightmaps yet, so leave this off
 	intnode_root->setStateSet(difRSS);
 		
-	osg::TexEnv* lmEnv = new osg::TexEnv(osg::TexEnv::REPLACE);
+	//osg::TexEnv* lmEnv = new osg::TexEnv(osg::TexEnv::REPLACE);
 	osg::TexEnv* dfEnv = new osg::TexEnv(osg::TexEnv::MODULATE);
 	
 	osg::Vec3Array* verts = new osg::Vec3Array();
@@ -891,7 +891,7 @@ osg::ref_ptr<osg::Image> DIFReader::readImage(osgDB::ifstream * mapFile){
 
 void DIFReader::readCSMesh(osgDB::ifstream * mapFile, DIFInteriorObj::CSMesh * csm){
 	U32 i = 0;
-	F32 tmpf;
+	//F32 tmpf;
 	U32 j;
 	U16 k;
 	U8 flag;
