@@ -28,11 +28,13 @@ using namespace osg;
 using namespace osgDB;
 
 
-
+// We *will* want to implement this in FreeBuild
+// http://www.openscenegraph.org/projects/osg/wiki/Support/Tutorials/VFS
 ReaderWriterLDR::ReaderWriterLDR(){
 	supportsExtension("dat", "LDraw Parts and Primitives");
 	supportsExtension("ldr", "LDraw Model");
 	supportsExtension("mpd", "LDraw Multi-Part Documents");
+	//supportsOption("ldrDir", "The path to a valid LDraw installation");
 }
 
 ReaderWriterLDR::~ReaderWriterLDR(){}
