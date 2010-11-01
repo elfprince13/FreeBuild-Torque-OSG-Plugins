@@ -559,13 +559,13 @@ Words		:
 CommentLine	: tZERO Words tEOL
 {
 	
-	//std::cout << "Remark \"" << $2 << "\" at depth " << include_stack_ptr << std::endl;
+	//osg::notify(osg::DEBUG_INFO) << "Remark \"" << $2 << "\" at depth " << include_stack_ptr << std::endl;
 	
 	delete [] $2;
 }
 | tZERO Words tEOF
 {
-	//std::cout << "Remark \"" << $2 <<"\" at depth " << include_stack_ptr <<std::endl;
+	//osg::notify(osg::DEBUG_INFO) << "Remark \"" << $2 <<"\" at depth " << include_stack_ptr <<std::endl;
 	
 	delete [] $2;
 	if (stop_include_file() == (-1)) { YYACCEPT; };
@@ -649,14 +649,14 @@ PartName	: tIDENT
 
 ObjectLine	: tONE Color TransMatrix PartName tEOL
 {
-	
-	if (start_include_file($4) == 0) {
+	osgDB::ReaderWriter::ReadResult rr = start_include_file($4);
+	if (rr.status() == osgDB::ReaderWriter::ReadResult::FILE_LOADED || rr.status() == osgDB::ReaderWriter::ReadResult::FILE_LOADED_FROM_CACHE) {
 		/* update transform matrices */
 		push_transform($3);
 		znamelist_push();
 		current_color[include_stack_ptr] = $2;
 	} else {
-		std::cout << "Cannot find " << $4 << ", ignoring." << std::endl;
+		osg::notify(osg::DEBUG_INFO) << "Cannot find " << $4 << ", ignoring." << std::endl;
 		}
 		
 		delete [] $4;
@@ -664,14 +664,15 @@ ObjectLine	: tONE Color TransMatrix PartName tEOL
 		| tONE Color TransMatrix PartName tEOF
 		{
 			
-			if (start_include_file($4) == 0) {
+			osgDB::ReaderWriter::ReadResult rr = start_include_file($4);
+			if (rr.status() == osgDB::ReaderWriter::ReadResult::FILE_LOADED || rr.status() == osgDB::ReaderWriter::ReadResult::FILE_LOADED_FROM_CACHE) {
 				/* update transform matrices */
 				push_transform($3);
 				znamelist_push();
 				current_color[include_stack_ptr] = $2;
 				defer_stop_include_file();
 			} else {
-				std::cout << "Cannot find " << $4 << ", ignoring."<< std::endl;
+				osg::notify(osg::DEBUG_INFO) << "Cannot find " << $4 << ", ignoring."<< std::endl;
 			}
 			
 			delete [] $4;
@@ -804,7 +805,7 @@ ObjectLine	: tONE Color TransMatrix PartName tEOL
 			//current_transform[transform_stack_ptr]->mulP(*$5);
 			//current_transform[transform_stack_ptr]->mulP(*$6);
 			
-			emit_five($3, $4, $5, $6, $2);
+			emit_optline($3, $4, $5, $6, $2);
 			
 			
 			delete $3;
@@ -824,7 +825,7 @@ ObjectLine	: tONE Color TransMatrix PartName tEOL
 			//current_transform[transform_stack_ptr]->mulP(*$5);
 			//current_transform[transform_stack_ptr]->mulP(*$6);
 			
-			emit_five($3, $4, $5, $6, $2);
+			emit_optline($3, $4, $5, $6, $2);
 			
 			
 			delete $3;
@@ -840,7 +841,7 @@ ObjectLine	: tONE Color TransMatrix PartName tEOL
 		
 		void yyerror(char *s)
 		{
-			std::cerr << "Syntax error on line \"" << s << "\""<< std::endl;
+			osg::notify(osg::FATAL) << "Syntax error on line \"" << s << "\""<< std::endl;
 		}
 		
 		osg::Vec3f * LDParse::savept(float x, float y, float z)
@@ -874,7 +875,7 @@ ObjectLine	: tONE Color TransMatrix PartName tEOL
 		S32 LDParse::print_transform(osg::Matrixf *m)
 		{
 			//m->dumpMatrix();
-			std::cout << "We don't print matrices now";
+			osg::notify(osg::DEBUG_INFO) << "We don't print matrices now";
 			return 0;
 		}
 		
@@ -948,7 +949,7 @@ ObjectLine	: tONE Color TransMatrix PartName tEOL
 		}
 		
 		inline void LDParse::zWrite(char *message){
-			std::cout << "LDraw Write: " << message << std::endl;
+			osg::notify(osg::DEBUG_INFO) << "LDraw Write: " << message << std::endl;
 		}
 		
 		inline void LDParse::zClear(){ ; // Do nothing for now

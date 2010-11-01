@@ -54,24 +54,47 @@ ReaderWriter::ReadResult ReaderWriterLDR::readNode(
 {
 	ref_ptr<Node>              result;
 	osgDB::ifstream            stream;
+	std::string ldpath("");
 	std::string ext = osgDB::getFileExtension(file);
+	const FilePathList fpl = options->getDatabasePathList();
 	
 	// See if we handle this kind of file
 	if (!acceptsExtension(ext))
 		return ReadResult::FILE_NOT_HANDLED;
 	
 	// See if we can find the requested file
-	std::string fileName = osgDB::findDataFile(file, options);
-	if (fileName.empty()) 
+	U32 i;
+	std::deque<std::string> ppmPaths;
+	for(i = 0; i < fpl.size(); i++){
+		std::string dir = fpl[i];
+		ppmPaths = LDParse::checkLDrawDirectory(dir);
+		if(ppmPaths.size() == 3){
+			ldpath = dir;
+			i++; // Flag that we did it
+			break;
+		}
+	}
+	if (ppmPaths.size() != 3){
+		osg::notify(osg::FATAL) << "A valid LDraw installation was not provided in the options to ReaderWriterLDR::readNode()" << std::endl;
 		return ReadResult::FILE_NOT_FOUND;
+	}
+	LDParse::LDrawInstallation = new std::deque<std::string>;
+	LDParse::LDrawInstallation->resize(3);
+	for(i = 0; i < 3; i++)	(*LDParse::LDrawInstallation)[i] = ppmPaths[i];
+	ReadResult retVal = LDParse::initParse(file);
+	// Okay, we're done. reset. This is NOT thread safe.
+	// At all, but nothing to do with flex/bison is, so just be smart
+	delete LDParse::LDrawInstallation;
+	LDParse::LDrawInstallation = NULL;
+	
 	
 	if(osgDB::equalCaseInsensitive(ext, "dat")){
-		//We have a Dynamix Interior File - Probably Torque Game Engine or similar
 		// Cache a primitive
 		;
 		
 	} else {
 		//handle mpd and ldr the same for now
+		;
 	}
 	
 	ReadResult retval = ReadResult::ERROR_IN_READING_FILE;

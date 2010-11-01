@@ -136,7 +136,8 @@ ident	({alpha}|{digit}|{special})+
 %%
 
 
-S32 LDParse::start_include_file(char *root_name)
+
+osgDB::ReaderWriter::ReadResult LDParse::start_include_file(std::string root_name)
 {
 	//static char filename[256];
 	//char fixed_root_name[256];
@@ -173,11 +174,16 @@ S32 LDParse::start_include_file(char *root_name)
 		include_stack_ptr++;
 		cached_file_stack[include_stack_ptr] = found_it;
 		found_it->next_token_index = 0;
-		//current_type[include_stack_ptr] = found_it->ftype;
-		return 0;
+		current_type[include_stack_ptr] = found_it->ftype;
+		return osgDB::ReaderWriter::ReadResult::FILE_LOADED_FROM_CACHE;
 	} else {
 		// read it from the file system
-		fbuf = LDParse::bufferFile(LDParse::findLDrawFile(root_name));
+		std::string fileLoc = LDParse::findLDrawFile(root_name);
+		if(fileLoc.empty()){
+			osg::notify(osg::WARN) << "Unable to include file " << root_name << ", because it could not be found" << std::endl;
+			return osgDB::ReaderWriter::ReadResult::FILE_NOT_FOUND;
+		}
+		fbuf = LDParse::bufferFile(fileLoc);
 		if(fbuf) {
 			include_stack_ptr++;
 			
@@ -186,7 +192,7 @@ S32 LDParse::start_include_file(char *root_name)
 			//yyin = fp;
 			//yy_switch_to_buffer(yy_create_buffer( yyin, YY_BUF_SIZE ) );
 			/*yy_switch_to_buffer(*/yy_scan_buffer(fbuf, strlen(fbuf) + 2)/*)*/;
-			//current_type[include_stack_ptr] = ftype;
+			current_type[include_stack_ptr] = ftype;
 			// if entry in cache is not marked bad, cache this file
 			if (((ftype == TYPE_P) || (ftype == TYPE_PART))
 				&& (found_it == NULL)) {
@@ -196,7 +202,7 @@ S32 LDParse::start_include_file(char *root_name)
 				if (cached_file_stack_index < MAX_CACHED_FILES) {
 					chs = &(cached_streams[cached_file_stack_index]);
 					chs->valid = CHS_FILLING;
-					strcpy(chs->filename, root_name);
+					strcpy(chs->filename, root_name.c_str());
 					chs->ftype = ftype;
 					chs->next_token_index = 0;
 					// malloc here
@@ -219,18 +225,18 @@ S32 LDParse::start_include_file(char *root_name)
 				cached_file_stack[include_stack_ptr] = chs;
 #if defined( _DEBUG    ) || defined( DEBUG )
 				if (chs != NULL) {
-					std::cout << "Caching file "<< root_name <<" in slot " << (cached_file_stack_index-1) << std::endl;
+					osg::notify(osg::DEBUG_INFO) << "Caching file "<< root_name <<" in slot " << (cached_file_stack_index-1) << std::endl;
 				} else {
-					std::cout << "No room to cache file " << root_name << std::endl;
+					osg::notify(osg::DEBUG_INFO) << "No room to cache file " << root_name << std::endl;
 				}
 #endif
 			} else {
 				// do not cache this file
 				cached_file_stack[include_stack_ptr] = NULL;
 			}
-			return 0;
+			return osgDB::ReaderWriter::ReadResult::FILE_LOADED;
 		} else {
-			return -1;
+			return osgDB::ReaderWriter::ReadResult::FILE_NOT_FOUND;
 		}
 	}
 }
@@ -263,7 +269,7 @@ S32 LDParse::stop_include_file(void)
 				cached_file_stack[include_stack_ptr]->valid = CHS_FILLED;
 				ldlite_profile.cached_files++;
 #if defined( _DEBUG    ) || defined( DEBUG )
-				std::cout << "Cached " << cached_file_stack[include_stack_ptr]->filename <<", used "<<cached_file_stack[include_stack_ptr]->next_token_index) <<" tokens" << std::endl;
+				osg::notify(osg::DEBUG_INFO) << "Cached " << cached_file_stack[include_stack_ptr]->filename <<", used "<<cached_file_stack[include_stack_ptr]->next_token_index) <<" tokens" << std::endl;
 				
 #endif
 			} else {
@@ -296,7 +302,7 @@ S32 LDParse::stop_include_file(void)
 		znamelist_pop();
 		//	  yy_delete_buffer( YY_CURRENT_BUFFER );
 #if defined( _DEBUG    ) || defined( DEBUG )
-		std::cout	<< "Profile: " << ldlite_profile.cached_files
+		osg::notify(osg::DEBUG_INFO)	<< "Profile: " << ldlite_profile.cached_files
 		<< " cached, " << ldlite_profile.uncached_files
 		<< " uncached, " << ldlite_profile.cache_hits
 		<< " hits" << std::endl;
@@ -345,7 +351,7 @@ S32 LDParse::cache_mpd_subfiles(char *mpd_subfile_name)
 		S32 i;
 		
 #if defined( _DEBUG    ) || defined( DEBUG )
-		std::cout << "caching MPD file " << mpd_subfile_name << std::endl << std::endl;
+		osg::notify(osg::DEBUG_INFO) << "caching MPD file " << mpd_subfile_name << std::endl << std::endl;
 #endif
 		
 		for(i=0; i<cached_file_stack_index; i++) {
@@ -370,7 +376,7 @@ S32 LDParse::cache_mpd_subfiles(char *mpd_subfile_name)
 	// find an unused place to store this cached file
 	if (cached_file_stack_index >= MAX_CACHED_FILES) {
 #if defined( _DEBUG    ) || defined( DEBUG )
-		std::cout << "Not caching MPD subfile "<<mpd_subfile_name<<", too many files already cached."<<std::endl;
+		osg::notify(osg::DEBUG_INFO) << "Not caching MPD subfile "<<mpd_subfile_name<<", too many files already cached."<<std::endl;
 #endif
 		return(-1);
 	}
@@ -384,7 +390,7 @@ S32 LDParse::cache_mpd_subfiles(char *mpd_subfile_name)
 	chs->tokens.resize(MAX_CACHED_TOKENS);
 	if (chs->tokens.size() != MAX_CACHED_TOKENS) {
 #if defined( _DEBUG    ) || defined( DEBUG )
-		std::cerr << "Not caching MPD subfile "<<mpd_subfile_name<< ", out of memory (1)."<<std::endl;
+		osg::notify(osg::WARN) << "Not caching MPD subfile "<<mpd_subfile_name<< ", out of memory (1)."<<std::endl;
 #endif
 		return (-1);
 	}
@@ -394,7 +400,7 @@ S32 LDParse::cache_mpd_subfiles(char *mpd_subfile_name)
 		//dFree(chs->tokens);
 		chs->tokens.clear();
 #if defined( _DEBUG    ) || defined( DEBUG )
-		std::cerr << "Not caching MPD subfile "<<mpd_subfile_name<<", out of memory (2)."<<std::endl;
+		osg::notify(osg::WARN) << "Not caching MPD subfile "<<mpd_subfile_name<<", out of memory (2)."<<std::endl;
 #endif
 		return (-1);
 	}
@@ -402,7 +408,7 @@ S32 LDParse::cache_mpd_subfiles(char *mpd_subfile_name)
 	cached_file_stack_index++;
 	
 #if defined( _DEBUG    ) || defined( DEBUG )
-	std::cout << "Caching MPD subfile " << mpd_subfile_name<<std::endl;
+	osg::notify(osg::DEBUG_INFO) << "Caching MPD subfile " << mpd_subfile_name<<std::endl;
 #endif
 	state = 0;
 	while (1) {
@@ -414,7 +420,7 @@ S32 LDParse::cache_mpd_subfiles(char *mpd_subfile_name)
 			if (chs->valid == CHS_FILLING) {
 				chs->valid = CHS_FILLED;
 #if defined( _DEBUG    ) || defined( DEBUG )
-				std::cout << "Cached " << chs->filename << ", used "<<chs->next_token_index<<" tokens"<<std::endl;
+				osg::notify(osg::DEBUG_INFO) << "Cached " << chs->filename << ", used "<<chs->next_token_index<<" tokens"<<std::endl;
 #endif
 			}
 			return(0);
@@ -424,7 +430,7 @@ S32 LDParse::cache_mpd_subfiles(char *mpd_subfile_name)
 				/* TBD: realloc */
 				stop_caching();
 #if defined( _DEBUG    ) || defined( DEBUG )
-				std::cout << "MPD subfile " << chs->filename <<" is too large to cache"<<std::endl;
+				osg::notify(osg::DEBUG_INFO) << "MPD subfile " << chs->filename <<" is too large to cache"<<std::endl;
 #endif
 #else
 				//chs->tokens = (S32 *)dRealloc(chs->tokens, 2*chs->max_tokens*sizeof(S32));
@@ -436,11 +442,11 @@ S32 LDParse::cache_mpd_subfiles(char *mpd_subfile_name)
 				{
 					stop_caching();
 #if defined( _DEBUG    ) || defined( DEBUG )
-					std::cerr << "MPD subfile %s is too large to cache " << chs->filename << std::endl;
+					osg::notify(osg::WARN) << "MPD subfile %s is too large to cache " << chs->filename << std::endl;
 #endif
 				} else {
 #if defined( _DEBUG    ) || defined( DEBUG )
-					std::cout << "MPD subfile "<< chs->filename << " is large, increasing cache to "
+					osg::notify(osg::DEBUG_INFO) << "MPD subfile "<< chs->filename << " is large, increasing cache to "
 					<<chs->max_tokens << " tokens"<<std::endl;
 #endif
 				}
@@ -476,7 +482,7 @@ S32 LDParse::cache_mpd_subfiles(char *mpd_subfile_name)
 							//
 							chs->valid = CHS_FILLED;
 #if defined( _DEBUG    ) || defined( DEBUG )
-							std::cout << "Cached "<<chs->filename<<", used "<<chs->next_token_index<<" tokens"<<std::endl;
+							osg::notify(osg::DEBUG_INFO) << "Cached "<<chs->filename<<", used "<<chs->next_token_index<<" tokens"<<std::endl;
 #endif
 						}
 						return cache_mpd_subfiles(yylval.c);
@@ -490,7 +496,7 @@ S32 LDParse::cache_mpd_subfiles(char *mpd_subfile_name)
 				/* TBD: realloc */
 				stop_caching();
 #if defined( _DEBUG    ) || defined( DEBUG )
-				std::cerr << "MPD subfile %s is too large to cache " << chs->filename << std::endl;
+				osg::notify(osg::WARN) << "MPD subfile %s is too large to cache " << chs->filename << std::endl;
 #endif
 			}
 #endif
@@ -541,7 +547,7 @@ S32 LDParse::yylex(void)
 					/* TBD: realloc */
 					stop_caching();
 #if defined( _DEBUG    ) || defined( DEBUG )
-					std::cerr << "File %s is too large to cache " << chs->filename << std::endl;
+					osg::notify(osg::WARN) << "File %s is too large to cache " << chs->filename << std::endl;
 #endif
 				}
 				return rc;
@@ -552,11 +558,14 @@ S32 LDParse::yylex(void)
 				chs->next_token_index++;
 				return rc;
 				break;
+			default:
+				osg::notify(osg::FATAL) << "Unrecognized CHS_STATE constant in LDParse::yylex" << std::endl;
+				exit(-1);
 		}
 	}
 }
 
-S32 LDParse::initParse(const char* filename){
+osgDB::ReaderWriter::ReadResult LDParse::initParse(std::string filename){
 	
 	
 	zcolor_init();
@@ -565,14 +574,26 @@ S32 LDParse::initParse(const char* filename){
 	current_transform[transform_stack_ptr] = savemat(0.0,0.0,0.0, 1.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,1.0);
 	
 	
-	char * fbuf = LDParse::bufferFile(LDParse::findLDrawFile(filename));
+	std::string fileLoc = LDParse::findLDrawFile(filename);
+	if(fileLoc.empty()){
+		osg::notify(osg::WARN) << "Unable to include file " << filename << ", because it could not be found" << std::endl;
+		return osgDB::ReaderWriter::ReadResult::FILE_NOT_FOUND;
+	}
+	char * fbuf = LDParse::bufferFile(fileLoc);
 	if(fbuf) {
 		
 		YY_BUFFER_STATE mbs = yy_scan_buffer(fbuf, strlen(fbuf) + 2);
 		S32 my_parse_result  = LDyyparse ();
 		yy_delete_buffer (mbs);
-		return my_parse_result;
+		if(my_parse_result){
+			// Crap. Something was wrong;
+			return osgDB::ReaderWriter::ReadResult::ERROR_IN_READING_FILE;
+		} else{
+			// Do something intelligent, like actually load our geometry
+			return osgDB::ReaderWriter::ReadResult::FILE_LOADED;
+		}
+		//return my_parse_result;
 		
 	}
-	return -1;
+	return osgDB::ReaderWriter::ReadResult::FILE_NOT_FOUND;
 }

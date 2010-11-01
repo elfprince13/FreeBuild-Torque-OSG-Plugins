@@ -566,8 +566,8 @@ static const yytype_uint16 yyrline[] =
      426,   430,   438,   447,   456,   462,   467,   472,   477,   483,
      489,   495,   501,   507,   513,   519,   525,   531,   536,   544,
      548,   559,   566,   575,   578,   584,   594,   604,   608,   618,
-     628,   638,   650,   664,   682,   696,   714,   731,   752,   773,
-     796,   816
+     628,   638,   650,   664,   683,   697,   715,   732,   753,   774,
+     797,   817
 };
 #endif
 
@@ -2246,7 +2246,7 @@ yyreduce:
 
     {
 	
-	//std::cout << "Remark \"" << $2 << "\" at depth " << include_stack_ptr << std::endl;
+	//osg::notify(osg::DEBUG_INFO) << "Remark \"" << $2 << "\" at depth " << include_stack_ptr << std::endl;
 	
 	delete [] (yyvsp[(2) - (3)].c);
 ;}
@@ -2255,7 +2255,7 @@ yyreduce:
   case 92:
 
     {
-	//std::cout << "Remark \"" << $2 <<"\" at depth " << include_stack_ptr <<std::endl;
+	//osg::notify(osg::DEBUG_INFO) << "Remark \"" << $2 <<"\" at depth " << include_stack_ptr <<std::endl;
 	
 	delete [] (yyvsp[(2) - (3)].c);
 	if (stop_include_file() == (-1)) { YYACCEPT; };
@@ -2356,14 +2356,14 @@ yyreduce:
   case 102:
 
     {
-	
-	if (start_include_file((yyvsp[(4) - (5)].c)) == 0) {
+	osgDB::ReaderWriter::ReadResult rr = start_include_file((yyvsp[(4) - (5)].c));
+	if (rr.status() == osgDB::ReaderWriter::ReadResult::FILE_LOADED || rr.status() == osgDB::ReaderWriter::ReadResult::FILE_LOADED_FROM_CACHE) {
 		/* update transform matrices */
 		push_transform((yyvsp[(3) - (5)].m));
 		znamelist_push();
 		current_color[include_stack_ptr] = (yyvsp[(2) - (5)].i);
 	} else {
-		std::cout << "Cannot find " << (yyvsp[(4) - (5)].c) << ", ignoring." << std::endl;
+		osg::notify(osg::DEBUG_INFO) << "Cannot find " << (yyvsp[(4) - (5)].c) << ", ignoring." << std::endl;
 		}
 		
 		delete [] (yyvsp[(4) - (5)].c);
@@ -2374,14 +2374,15 @@ yyreduce:
 
     {
 			
-			if (start_include_file((yyvsp[(4) - (5)].c)) == 0) {
+			osgDB::ReaderWriter::ReadResult rr = start_include_file((yyvsp[(4) - (5)].c));
+			if (rr.status() == osgDB::ReaderWriter::ReadResult::FILE_LOADED || rr.status() == osgDB::ReaderWriter::ReadResult::FILE_LOADED_FROM_CACHE) {
 				/* update transform matrices */
 				push_transform((yyvsp[(3) - (5)].m));
 				znamelist_push();
 				current_color[include_stack_ptr] = (yyvsp[(2) - (5)].i);
 				defer_stop_include_file();
 			} else {
-				std::cout << "Cannot find " << (yyvsp[(4) - (5)].c) << ", ignoring."<< std::endl;
+				osg::notify(osg::DEBUG_INFO) << "Cannot find " << (yyvsp[(4) - (5)].c) << ", ignoring."<< std::endl;
 			}
 			
 			delete [] (yyvsp[(4) - (5)].c);
@@ -2525,7 +2526,7 @@ yyreduce:
 			//current_transform[transform_stack_ptr]->mulP(*$5);
 			//current_transform[transform_stack_ptr]->mulP(*$6);
 			
-			emit_five((yyvsp[(3) - (7)].v), (yyvsp[(4) - (7)].v), (yyvsp[(5) - (7)].v), (yyvsp[(6) - (7)].v), (yyvsp[(2) - (7)].i));
+			emit_optline((yyvsp[(3) - (7)].v), (yyvsp[(4) - (7)].v), (yyvsp[(5) - (7)].v), (yyvsp[(6) - (7)].v), (yyvsp[(2) - (7)].i));
 			
 			
 			delete (yyvsp[(3) - (7)].v);
@@ -2548,7 +2549,7 @@ yyreduce:
 			//current_transform[transform_stack_ptr]->mulP(*$5);
 			//current_transform[transform_stack_ptr]->mulP(*$6);
 			
-			emit_five((yyvsp[(3) - (7)].v), (yyvsp[(4) - (7)].v), (yyvsp[(5) - (7)].v), (yyvsp[(6) - (7)].v), (yyvsp[(2) - (7)].i));
+			emit_optline((yyvsp[(3) - (7)].v), (yyvsp[(4) - (7)].v), (yyvsp[(5) - (7)].v), (yyvsp[(6) - (7)].v), (yyvsp[(2) - (7)].i));
 			
 			
 			delete (yyvsp[(3) - (7)].v);
@@ -2781,7 +2782,7 @@ yyreturn:
 		
 		void yyerror(char *s)
 		{
-			std::cerr << "Syntax error on line \"" << s << "\""<< std::endl;
+			osg::notify(osg::FATAL) << "Syntax error on line \"" << s << "\""<< std::endl;
 		}
 		
 		osg::Vec3f * LDParse::savept(float x, float y, float z)
@@ -2815,7 +2816,7 @@ yyreturn:
 		S32 LDParse::print_transform(osg::Matrixf *m)
 		{
 			//m->dumpMatrix();
-			std::cout << "We don't print matrices now";
+			osg::notify(osg::DEBUG_INFO) << "We don't print matrices now";
 			return 0;
 		}
 		
@@ -2889,7 +2890,7 @@ yyreturn:
 		}
 		
 		inline void LDParse::zWrite(char *message){
-			std::cout << "LDraw Write: " << message << std::endl;
+			osg::notify(osg::DEBUG_INFO) << "LDraw Write: " << message << std::endl;
 		}
 		
 		inline void LDParse::zClear(){ ; // Do nothing for now

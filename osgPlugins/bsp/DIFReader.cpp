@@ -68,7 +68,7 @@ void DIFReader::buildInteriorResource(){
 	F32 min, max, ourMin;
 	for(i = 0; i < dif_data->lod_list.size(); i++){
 		ourMin = dif_data->lod_list[i]->minPixels;
-		std::cout << "lodControl has " << lodControl->getNumChildren() << " children" << std::endl;
+		osg::notify(DEBUG_INFO) << "lodControl has " << lodControl->getNumChildren() << " children" << std::endl;
 		for(j = 0; j<lodControl->getNumChildren(); j++){
 			min = lodControl->getMinRange(i);
 			max = lodControl->getMaxRange(i);
@@ -79,17 +79,17 @@ void DIFReader::buildInteriorResource(){
 			}
 		}
 		if(!j){
-			std::cout << "\tInsert first one!" << std::endl;
+			osg::notify(DEBUG_INFO) << "\tInsert first one!" << std::endl;
 			min = ourMin;
 			max = F32_MAX;
 		}
-		std::cout << "\tsetting min,max: " << min << "," << max << std::endl;
+		osg::notify(DEBUG_INFO) << "\tsetting min,max: " << min << "," << max << std::endl;
 		lodControl->addChild(dif_data->lod_list[i]->buildInteriorNode(), min, max);
 	}
 	
 	// This lot probably don't have a maximum display size, just a minimum,
 	// so let's go with F32_MAX all the way around
-	std::cout << "Adding " << dif_data->subs_list.size() << " sub-objects to lodControl" << std::endl;
+	osg::notify(DEBUG_INFO) << "Adding " << dif_data->subs_list.size() << " sub-objects to lodControl" << std::endl;
 	for(i = 0; i < dif_data->subs_list.size(); i++)
 		lodControl->addChild(dif_data->subs_list[i]->buildInteriorNode(), dif_data->subs_list[i]->minPixels, F32_MAX);
 	
@@ -153,7 +153,7 @@ osg::Node *  DIFInteriorObj::buildInteriorNode(){
 	//indices.clear();
 	
 	i = numMats * numLights;
-	std::cout << "Allocating vector holding pen for " << i << " = ("<< numMats << "*" << numLights <<") materials" << std::endl;
+	osg::notify(DEBUG_INFO) << "Allocating vector holding pen for " << i << " = ("<< numMats << "*" << numLights <<") materials" << std::endl;
 	std::vector<osg::Geometry*> gPerTex(i,NULL);
 	std::vector<std::vector<U32>* > iPerTex(i,NULL); // make sure we delete this vector afterwards
 	for(i = 0; i < zones.size(); i++){
@@ -306,8 +306,9 @@ osg::Node *  DIFInteriorObj::buildInteriorNode(){
 						dfImg = osgDB::readImageFile(texFile);
 					}
 					if(!dfImg){
-						std::cerr << "unable to load texture " << texFile << std::endl;
-						return NULL;
+						osg::notify(FATAL) << "unable to load texture " << texFile << std::endl;
+						//return NULL;
+						exit(-1);
 					}
 					dfImg->flipVertical();
 					dfTex->setImage(dfImg);
@@ -388,7 +389,7 @@ osg::Node *  DIFInteriorObj::buildInteriorNode(){
 		bool flag;
 		osg::Geometry* curGeo = NULL;
 		std::vector<U16>* curIndices = NULL;
-		std::cout << "mesh " << i << " has " << csm->primitives.size() << " primitives" << std::endl;
+		osg::notify(DEBUG_INFO) << "mesh " << i << " has " << csm->primitives.size() << " primitives" << std::endl;
 		for(j = 0; j < csm->primitives.size(); j++){
 			CSMPrimitive * primitive = &(csm->primitives[j]);
 			m = primitive->diffuseIndex * numLights + primitive->lightMapIndex;
@@ -405,9 +406,9 @@ osg::Node *  DIFInteriorObj::buildInteriorNode(){
 					mlIndices[texIndex] = curIndices;
 					mlGeo[texIndex] = curGeo;	// Geometry/material
 				}
-				if(i > 1) std::cout << "\tcurIndices has index " << texIndex << " and size " << curIndices->size() << std::endl;
+				if(i > 1) osg::notify(DEBUG_INFO) << "\tcurIndices has index " << texIndex << " and size " << curIndices->size() << std::endl;
 			} else{
-				if(i > 1) std::cout << "\ttexIndex didn't change" << std::endl;
+				if(i > 1) osg::notify(DEBUG_INFO) << "\ttexIndex didn't change" << std::endl;
 			}
 			
 			U32 startIndex = curIndices->size();
@@ -425,7 +426,7 @@ osg::Node *  DIFInteriorObj::buildInteriorNode(){
 				}
 			}
 			
-			if(i > 1) std::cout <<"\tnow curIndices has size " << curIndices->size() << std::endl;
+			if(i > 1) osg::notify(DEBUG_INFO) <<"\tnow curIndices has size " << curIndices->size() << std::endl;
 			
 			std::vector<U16> vmapL2G;
 			vmapL2G.clear();
@@ -445,7 +446,7 @@ osg::Node *  DIFInteriorObj::buildInteriorNode(){
 					// Especially given low-end specs
 					l = (*curIndices)[startIndex+k];
 					(*curIndices)[startIndex+k] = verts->size();
-					if(l >= csm->verts.size()) std::cerr << "OH STINK" << std::endl;
+					if(l >= csm->verts.size()) osg::notify(WARN) << "OH STINK" << std::endl;
 					verts->push_back(csm->verts[l]);
 					norms->push_back(csm->norms[l]);
 					// fill in tex coords :)
@@ -465,7 +466,7 @@ osg::Node *  DIFInteriorObj::buildInteriorNode(){
 		
 		/*F32* pts = verts->getDataPointer();
 		for(j = 0; j<verts->size(); j++){
-			std::cout << "vert " << pts[3*j] << " " << pts[3*j+1] << " " << pts[3*j+2] << std::endl;
+			osg::notify(DEBUG_INFO) << "vert " << pts[3*j] << " " << pts[3*j+1] << " " << pts[3*j+2] << std::endl;
 		}//*/
 		
 		for(j = 0; j < n*numLights; j++){
@@ -498,21 +499,21 @@ osg::Node *  DIFInteriorObj::buildInteriorNode(){
 					osg::Image* dfImg = NULL;
 					std::string texFile;
 					if(csm->embedFlags[texIndex]){
-						std::cout << "embedded texture " << texIndex << " for CSMesh " << i << std::endl;
+						osg::notify(DEBUG_INFO) << "embedded texture " << texIndex << " for CSMesh " << i << std::endl;
 						dfImg = csm->embeddedMats[texIndex].get();
 						texFile = std::string("EMBEDDED");
 					} else{
 						char * name = csm->csMaterialList.materials.materialNames[texIndex];
 						texFile = difFindTexture(*filename, name);
 						if(texFile.size()){
-							std::cout << "reading " << texFile << " for texture " << texIndex << " in mesh " << i << std::endl;
+							osg::notify(DEBUG_INFO) << "reading " << texFile << " for texture " << texIndex << " in mesh " << i << std::endl;
 							dfImg = osgDB::readImageFile(texFile);
 						}	
 					}
 					
 					if(!dfImg){
-						std::cerr << "unable to load texture " << texFile << std::endl;
-						return NULL;
+						osg::notify(FATAL) << "unable to load texture " << texFile << std::endl;
+						exit(-1);
 					}
 					dfImg->flipVertical();
 					dfTex->setImage(dfImg);
@@ -520,7 +521,7 @@ osg::Node *  DIFInteriorObj::buildInteriorNode(){
 					csm->csMaterialList.materials.materials[texIndex] = dfTex;
 					
 				} else{
-					std::cout << "loading cached material " << csm->csMaterialList.materials.materialNames[texIndex] << " for texture " << texIndex << " in mesh " << i << std::endl;
+					osg::notify(DEBUG_INFO) << "loading cached material " << csm->csMaterialList.materials.materialNames[texIndex] << " for texture " << texIndex << " in mesh " << i << std::endl;
 					dfTex = csm->csMaterialList.materials.materials[texIndex];
 				}
 				
@@ -535,7 +536,7 @@ osg::Node *  DIFInteriorObj::buildInteriorNode(){
 				
 				
 				curGeo->setStateSet(geoState);
-				std::cout << "adding drawable with " << indices->size() << " indices to mesh " << i << std::endl;
+				osg::notify(DEBUG_INFO) << "adding drawable with " << indices->size() << " indices to mesh " << i << std::endl;
 				meshI->addDrawable(curGeo);
 			}
 		}
@@ -546,7 +547,7 @@ osg::Node *  DIFInteriorObj::buildInteriorNode(){
 		//if(i == 4)
 		//intnode_root->addChild(meshTransformGroup);
 		intnode_root->addChild(meshI);
-		std::cout<< verts->size() << " vertices for mesh " << i << std::endl;
+		osg::notify(DEBUG_INFO)<< verts->size() << " vertices for mesh " << i << std::endl;
 		delete mlIndices;
 		delete mlGeo;
 	}
@@ -601,7 +602,7 @@ void DIFReader::readVec(osgDB::ifstream * inputStream, osg::Vec4f * vec){
 void DIFReader::readColor(osgDB::ifstream * inputStream, osg::Vec4f * col){
 	const F32 inv255 = 1.0f / 255.0f;
 	U8 c1, c2, c3, c4;
-	//std::cout << "reading color" << std::endl;
+	//osg::notify(DEBUG_INFO) << "reading color" << std::endl;
 	
 	inputStream->read((S8*)&c1, sizeof(U8));
 	inputStream->read((S8*)&c2, sizeof(U8));
@@ -620,7 +621,7 @@ void DIFReader::readString(osgDB::ifstream * inputStream, char buf[256])
 	inputStream->read((S8*)&len, sizeof(U8));
 	inputStream->read(buf, S32(len));
 	buf[len] = 0;
-	//std::cout << "read string \"" << buf << "\"" << std::endl;
+	//osg::notify(DEBUG_INFO) << "read string \"" << buf << "\"" << std::endl;
 }
 
 void DIFReader::readLine(osgDB::ifstream * inputStream, U8 *buffer, U32 bufferSize)
@@ -674,7 +675,7 @@ void DIFReader::readMatList(osgDB::ifstream * inputStream, MaterialList * matLis
 		readMatListText(inputStream, matList, version);
 		return;
 	}
-	//std::cout << "read version " << S32(version) << std::endl;
+	//osg::notify(DEBUG_INFO) << "read version " << S32(version) << std::endl;
 	
 	// how many materials?
 	U32 count;
@@ -682,7 +683,7 @@ void DIFReader::readMatList(osgDB::ifstream * inputStream, MaterialList * matLis
 		return;
 	convertLEndianToHost(&count);
 	
-	//std::cout<<"reading " << count << " materials" <<std::endl;
+	//osg::notify(DEBUG_INFO)<<"reading " << count << " materials" <<std::endl;
 	
 	// pre-size the vectors for efficiency
 	matList->materials.reserve(count);
@@ -696,8 +697,8 @@ void DIFReader::readMatList(osgDB::ifstream * inputStream, MaterialList * matLis
 		readString(inputStream, buffer);
 		if( !buffer[0] )
 		{
-			std::cerr <<  "MaterialList::read: error reading stream" << std::endl;
-			return;
+			osg::notify(FATAL) <<  "MaterialList::read: error reading stream" << std::endl;
+			exit(-1);
 		}
 		
 		// Material paths are a legacy of Tribes tools,
@@ -860,8 +861,8 @@ void DIFReader::readLMapTexGen(osgDB::ifstream * inputStream, DTexGen * texGen)
 		case 5: sc = 2; tc = 1; break;
 			
 		default:
-			std::cerr << "Invalid st coord encoding in DIFReader::readLMapTG" << std::endl;
-			return;
+			osg::notify(FATAL) << "Invalid st coord encoding in DIFReader::readLMapTG" << std::endl;
+			exit(-1);
 	}
 	
 	U32 invScaleX = 1 << logScaleX;
@@ -876,16 +877,15 @@ void DIFReader::readLMapTexGen(osgDB::ifstream * inputStream, DTexGen * texGen)
 
 osg::ref_ptr<osg::Image> DIFReader::readImage(osgDB::ifstream * mapFile){
 	if(!reader.valid()){
-		std::cerr << "Invalid image reader" << std::endl;
-		return NULL;
+		osg::notify(FATAL) << "Invalid image reader" << std::endl;
+		exit(-1);
 	}
 	osgDB::ReaderWriter::ReadResult rr = reader->readImage(*mapFile);
 	if(rr.success()){
 		return rr.takeImage();
 	} else{
-		std::cout << "\t- Sorry, we screwed this one up" << std::endl;
-		osg::ref_ptr<osg::Image> img = NULL;
-		return img;
+		osg::notify(FATAL) << "DIFReader::readImage Sorry, we screwed this one up" << std::endl;
+		exit(-1);
 	}
 }
 
@@ -901,7 +901,7 @@ void DIFReader::readCSMesh(osgDB::ifstream * mapFile, DIFInteriorObj::CSMesh * c
 	
 	mapFile->read((S8*)&j, sizeof(U32));
 	convertLEndianToHost(&j);
-	std::cout << "\treading " << j << " csm primitives" << std::endl;
+	osg::notify(DEBUG_INFO) << "\treading " << j << " csm primitives" << std::endl;
 	csm->primitives.reserve(j);
 	DIFInteriorObj::CSMPrimitive tmp_prim;
 	for(i = 0; i < csm->primitives.capacity(); i++){
@@ -947,7 +947,7 @@ void DIFReader::readCSMesh(osgDB::ifstream * mapFile, DIFInteriorObj::CSMesh * c
 	
 	mapFile->read((S8*)&j, sizeof(U32));
 	convertLEndianToHost(&j);
-	std::cout << "\treading " << j << " indices" << std::endl;
+	osg::notify(DEBUG_INFO) << "\treading " << j << " indices" << std::endl;
 	csm->indices.reserve(j);
 	for(i = 0; i<csm->indices.capacity(); i++){
 		mapFile->read((S8*)&k,sizeof(U16));
@@ -957,7 +957,7 @@ void DIFReader::readCSMesh(osgDB::ifstream * mapFile, DIFInteriorObj::CSMesh * c
 	
 	mapFile->read((S8*)&j, sizeof(U32));
 	convertLEndianToHost(&j);
-	std::cout << "\treading " << j << " vertices" << std::endl;
+	osg::notify(DEBUG_INFO) << "\treading " << j << " vertices" << std::endl;
 	csm->verts.reserve(j);
 	for(i = 0; i<csm->verts.capacity(); i++){
 		readVec(mapFile, &tmp1);
@@ -966,7 +966,7 @@ void DIFReader::readCSMesh(osgDB::ifstream * mapFile, DIFInteriorObj::CSMesh * c
 	
 	mapFile->read((S8*)&j, sizeof(U32));
 	convertLEndianToHost(&j);
-	std::cout << "\treading " << j << " normals" << std::endl;
+	osg::notify(DEBUG_INFO) << "\treading " << j << " normals" << std::endl;
 	csm->norms.reserve(j);
 	for(i = 0; i<csm->norms.capacity(); i++){
 		readVec(mapFile, &tmp1);
@@ -975,7 +975,7 @@ void DIFReader::readCSMesh(osgDB::ifstream * mapFile, DIFInteriorObj::CSMesh * c
 	
 	mapFile->read((S8*)&j, sizeof(U32));
 	convertLEndianToHost(&j);
-	std::cout << "\treading " << j << " diffuse UVs" << std::endl;
+	osg::notify(DEBUG_INFO) << "\treading " << j << " diffuse UVs" << std::endl;
 	csm->diffuseUVs.reserve(j);
 	for(i = 0; i<csm->diffuseUVs.capacity(); i++){
 		readVec(mapFile, &tmp2f);
@@ -984,7 +984,7 @@ void DIFReader::readCSMesh(osgDB::ifstream * mapFile, DIFInteriorObj::CSMesh * c
 	
 	mapFile->read((S8*)&j, sizeof(U32));
 	convertLEndianToHost(&j);
-	std::cout << "\treading " << j << " lightmap UVs" << std::endl;
+	osg::notify(DEBUG_INFO) << "\treading " << j << " lightmap UVs" << std::endl;
 	csm->lightmapUVs.reserve(j);
 	for(i = 0; i<csm->lightmapUVs.capacity(); i++){
 		readVec(mapFile, &tmp2f);
@@ -998,7 +998,7 @@ void DIFReader::readCSMesh(osgDB::ifstream * mapFile, DIFInteriorObj::CSMesh * c
 	
 	mapFile->read((S8*)&j, sizeof(U32));
 	convertLEndianToHost(&j);
-	std::cout << "\tchecking " << j << " materials for PNG entries" << std::endl;
+	osg::notify(DEBUG_INFO) << "\tchecking " << j << " materials for PNG entries" << std::endl;
 	csm->embedFlags.reserve(j);
 	csm->embeddedMats.reserve(j);
 	for(i = 0; i<csm->embedFlags.capacity(); i++){
@@ -1011,13 +1011,13 @@ void DIFReader::readCSMesh(osgDB::ifstream * mapFile, DIFInteriorObj::CSMesh * c
 	
 	mapFile->read((S8*)&csm->hasSolid,sizeof(U8));
 	mapFile->read((S8*)&csm->hasTranslucency,sizeof(U8));
-	std::cout << "\t found isSolid(" << U32(csm->hasSolid) << ") and hasTranslucency(" << U32(csm->hasTranslucency) << ")" << std::endl;
+	osg::notify(DEBUG_INFO) << "\t found isSolid(" << U32(csm->hasSolid) << ") and hasTranslucency(" << U32(csm->hasTranslucency) << ")" << std::endl;
 	
 	readVec(mapFile, &tmp1);
 	readVec(mapFile, &tmp2);
 	csm->bounds.set(tmp1, tmp2);
 	
-	std::cout << "\t setting transform" << std::endl;
+	osg::notify(DEBUG_INFO) << "\t setting transform" << std::endl;
 	F32 mat[16];
 	for(i = 0; i < 16; i++){
 		mapFile->read((S8*)&mat[i],sizeof(F32));
@@ -1029,14 +1029,14 @@ void DIFReader::readCSMesh(osgDB::ifstream * mapFile, DIFInteriorObj::CSMesh * c
 	
 	tmp1.set(F32_MAX, F32_MAX, F32_MAX);	// Min extents -- doesn't look like it yet, but we pull the faces
 	tmp2.set(-F32_MAX, -F32_MAX, -F32_MAX);	// Max extents --  out from an inside-out box of maximum extent
-	std::cout << "\t setting bounds" << std::endl;
+	osg::notify(DEBUG_INFO) << "\t setting bounds" << std::endl;
 	for(i = 0; i < csm->verts.capacity(); i++){
 		tmp1 = takeMin(tmp1, csm->verts[i]);
 		tmp2 = takeMax(tmp2, csm->verts[i]);
 	}
 	csm->bounds.set(tmp1, tmp2);
 	
-	std::cout << std::endl;
+	osg::notify(DEBUG_INFO) << std::endl;
 }
 
 
@@ -1134,13 +1134,16 @@ void DIFInteriorObj::setupZonePlanes(){
 			if(usedPlanes[j])
 			{
 				if(tempSize >= planeList.size() * zones.size())
-					std::cerr << "Error, out of bounds plane list!" << std::endl;
+				{
+					osg::notify(FATAL) << "Error, out of bounds plane list!" << std::endl;
+					exit(-1);
+				}
 				temp[tempSize++] = j;
 			}
 		}
 		rZone.planeCount = tempSize - rZone.planeStart;
 	}
-	std::cout << "\tread " << tempSize << " zone planes" << std::endl;
+	osg::notify(DEBUG_INFO) << "\tread " << tempSize << " zone planes" << std::endl;
 	
 	zonePlanes.reserve(tempSize);
 	for(U32 j = 0; j < tempSize; j++)
@@ -1179,7 +1182,7 @@ bool DIFReader::readDIO(osgDB::ifstream * mapFile, DIFInteriorObj * curLevel){
 	mapFile->read((S8*)&j, sizeof(U32));
 	convertLEndianToHost(&j);
 	curLevel->iFV = j;
-	std::cout << "File Version " << j << std::endl;
+	osg::notify(DEBUG_INFO) << "File Version " << j << std::endl;
 	if(curLevel->iFV > IFV){
 		return false;
 	}
@@ -1187,7 +1190,7 @@ bool DIFReader::readDIO(osgDB::ifstream * mapFile, DIFInteriorObj * curLevel){
 	mapFile->read((S8*)&j, sizeof(U32));
 	convertLEndianToHost(&j);
 	curLevel->detailLevel = (j > MIN_PIXELS) ? j : MIN_PIXELS; // Force "good" (reasonable) behavior
-	std::cout << "Setting min pixels to " << curLevel->detailLevel << " (" << j << " read)" << std::endl;
+	osg::notify(DEBUG_INFO) << "Setting min pixels to " << curLevel->detailLevel << " (" << j << " read)" << std::endl;
 	
 	mapFile->read((S8*)&j, sizeof(U32));
 	convertLEndianToHost(&j);
@@ -1211,16 +1214,16 @@ bool DIFReader::readDIO(osgDB::ifstream * mapFile, DIFInteriorObj * curLevel){
 	convertLEndianToHost(&j);
 	curLevel->numLightStateEntries = j;
 	
-	std::cout << "alarm state? " << curLevel->hasAlarmState << " nlightstateentries " << curLevel->numLightStateEntries << std::endl;
+	osg::notify(DEBUG_INFO) << "alarm state? " << curLevel->hasAlarmState << " nlightstateentries " << curLevel->numLightStateEntries << std::endl;
 	
 	
 	mapFile->read((S8*)&j, sizeof(U32));
 	convertLEndianToHost(&j);
 	osg::Vec3f * normals = new osg::Vec3f[j];
-	std::cout << "reading " << j << " normals" << std::endl;
+	osg::notify(DEBUG_INFO) << "reading " << j << " normals" << std::endl;
 	for(i = 0; i < j; i++){
 		readVec(mapFile, &(normals[i]));
-		//std::cout << normals[i].x() << " " << normals[i].y() << " " << normals[i].z() << std::endl;
+		//osg::notify(DEBUG_INFO) << normals[i].x() << " " << normals[i].y() << " " << normals[i].z() << std::endl;
 	}
 	
 	U16 index;
@@ -1247,7 +1250,7 @@ bool DIFReader::readDIO(osgDB::ifstream * mapFile, DIFInteriorObj * curLevel){
 	
 	
 	curLevel->pointList.reserve(j);
-	std::cout << "reading " << j << " points" << std::endl;
+	osg::notify(DEBUG_INFO) << "reading " << j << " points" << std::endl;
 	for (i = 0; i < curLevel->pointList.capacity(); i++){
 		
 		readVec(mapFile, &tmp1);
@@ -1263,7 +1266,7 @@ bool DIFReader::readDIO(osgDB::ifstream * mapFile, DIFInteriorObj * curLevel){
 	
 	
 	curLevel->pointVisList.reserve(j);
-	std::cout << "reading " << j << " point vis states" << std::endl;
+	osg::notify(DEBUG_INFO) << "reading " << j << " point vis states" << std::endl;
 	
 	for( i = 0; i < curLevel->pointVisList.capacity(); i++)
 	{
@@ -1281,7 +1284,7 @@ bool DIFReader::readDIO(osgDB::ifstream * mapFile, DIFInteriorObj * curLevel){
 	
 	osg::Plane plane1;
 	osg::Plane plane2;
-	std::cout << "reading " << j << " texGenEQs" << std::endl;
+	osg::notify(DEBUG_INFO) << "reading " << j << " texGenEQs" << std::endl;
 	
 	DTexGen tmp_texgen;
 	for(i = 0; i < curLevel->texGenEQs.capacity(); i++){
@@ -1299,9 +1302,9 @@ bool DIFReader::readDIO(osgDB::ifstream * mapFile, DIFInteriorObj * curLevel){
 		readVec(mapFile, &tmp_texgen.xPlane);
 		readVec(mapFile, &tmp_texgen.yPlane);
 		if(i < 10){
-			std::cout << "\t" << tmp_texgen.xPlane.x() << " " << tmp_texgen.xPlane.y() << " " << tmp_texgen.xPlane.z() << " " << tmp_texgen.xPlane.w() << std::endl;
-			std::cout << "\t" << tmp_texgen.yPlane.x() << " " << tmp_texgen.yPlane.y() << " " << tmp_texgen.yPlane.z() << " " << tmp_texgen.yPlane.w() << std::endl;
-			std::cout << std::endl;
+			osg::notify(DEBUG_INFO) << "\t" << tmp_texgen.xPlane.x() << " " << tmp_texgen.xPlane.y() << " " << tmp_texgen.xPlane.z() << " " << tmp_texgen.xPlane.w() << std::endl;
+			osg::notify(DEBUG_INFO) << "\t" << tmp_texgen.yPlane.x() << " " << tmp_texgen.yPlane.y() << " " << tmp_texgen.yPlane.z() << " " << tmp_texgen.yPlane.w() << std::endl;
+			osg::notify(DEBUG_INFO) << std::endl;
 		}
 		curLevel->texGenEQs.push_back(tmp_texgen);
 	}
@@ -1311,7 +1314,7 @@ bool DIFReader::readDIO(osgDB::ifstream * mapFile, DIFInteriorObj * curLevel){
 	convertLEndianToHost(&j);
 	
 	curLevel->iBSPNodes.reserve(j);
-	std::cout << "reading " << j << " IBSPNodes" << std::endl;
+	osg::notify(DEBUG_INFO) << "reading " << j << " IBSPNodes" << std::endl;
 	DIFInteriorObj::IBSPNode tmp_ibspnode;
 	for(i = 0; i < curLevel->iBSPNodes.capacity(); i++){
 		mapFile->read((S8*)&k, sizeof(U16));
@@ -1342,7 +1345,7 @@ bool DIFReader::readDIO(osgDB::ifstream * mapFile, DIFInteriorObj * curLevel){
 	convertLEndianToHost(&j);
 	
 	curLevel->iBSPSolidLeaves.reserve(j);
-	std::cout << "reading " << j << " IBSPSolidLeaves" << std::endl;
+	osg::notify(DEBUG_INFO) << "reading " << j << " IBSPSolidLeaves" << std::endl;
 	//	U32 surfaceIndex;
 	//	U16 surfaceCount;
 	DIFInteriorObj::IBSPLeafSolid tmp_leafsolid;
@@ -1361,13 +1364,13 @@ bool DIFReader::readDIO(osgDB::ifstream * mapFile, DIFInteriorObj * curLevel){
 	}
 	
 	readMatList(mapFile, &(curLevel->materialList));
-	std::cout<<"read " << curLevel->materialList.materialNames.size() << " material names" << std::endl;
+	osg::notify(DEBUG_INFO)<<"read " << curLevel->materialList.materialNames.size() << " material names" << std::endl;
 	
 	mapFile->read((S8*)&j, sizeof(U32));
 	convertLEndianToHost(&j);
 	
 	curLevel->windings.reserve(j);
-	std::cout << "reading " << j << " windings" << std::endl;
+	osg::notify(DEBUG_INFO) << "reading " << j << " windings" << std::endl;
 	
 	for(i= 0; i < curLevel->windings.capacity(); i++){
 		mapFile->read((S8*)&j, sizeof(U32));
@@ -1380,7 +1383,7 @@ bool DIFReader::readDIO(osgDB::ifstream * mapFile, DIFInteriorObj * curLevel){
 	convertLEndianToHost(&j);
 	
 	curLevel->windingIndices.reserve(j);
-	std::cout << "reading " << j << " TriFans (winding indices)" << std::endl;
+	osg::notify(DEBUG_INFO) << "reading " << j << " TriFans (winding indices)" << std::endl;
 	DIFInteriorObj::TriFan tmp_trifan;
 	for(i= 0; i < curLevel->windingIndices.capacity(); i++){
 		mapFile->read((S8*)&j, sizeof(U32));
@@ -1397,7 +1400,7 @@ bool DIFReader::readDIO(osgDB::ifstream * mapFile, DIFInteriorObj * curLevel){
 		convertLEndianToHost(&j);
 		
 		curLevel->edgeList.reserve(j);
-		std::cout << "reading " << j << " edges" << std::endl;
+		osg::notify(DEBUG_INFO) << "reading " << j << " edges" << std::endl;
 		DIFInteriorObj::Edge tmp_edge;
 		for(i= 0; i < curLevel->edgeList.capacity(); i++){
 			mapFile->read((S8*)&j, sizeof(S32));
@@ -1421,7 +1424,7 @@ bool DIFReader::readDIO(osgDB::ifstream * mapFile, DIFInteriorObj * curLevel){
 	convertLEndianToHost(&j);
 	
 	curLevel->zones.reserve(j);
-	std::cout << "reading " << j << " zones" << std::endl;
+	osg::notify(DEBUG_INFO) << "reading " << j << " zones" << std::endl;
 	DIFInteriorObj::Zone tmp_zone;
 	for(i = 0; i < curLevel->zones.capacity(); i++){
 		mapFile->read((S8*)&tmp_zone.portalStart, sizeof(U16));
@@ -1462,7 +1465,7 @@ bool DIFReader::readDIO(osgDB::ifstream * mapFile, DIFInteriorObj * curLevel){
 	convertLEndianToHost(&j);
 	
 	curLevel->zoneSurfaces.reserve(j);
-	std::cout << "reading " << j << " zone surfaces" << std::endl;
+	osg::notify(DEBUG_INFO) << "reading " << j << " zone surfaces" << std::endl;
 	for(i= 0; i < curLevel->zoneSurfaces.capacity(); i++){
 		mapFile->read((S8*)&k, sizeof(U16));
 		convertLEndianToHost(&k);
@@ -1474,7 +1477,7 @@ bool DIFReader::readDIO(osgDB::ifstream * mapFile, DIFInteriorObj * curLevel){
 		convertLEndianToHost(&j);
 		
 		curLevel->zoneStaticMeshes.reserve(j);
-		std::cout << "reading " << j << " zone static meshes" << std::endl;
+		osg::notify(DEBUG_INFO) << "reading " << j << " zone static meshes" << std::endl;
 		for(i= 0; i < curLevel->zoneStaticMeshes.capacity(); i++){
 			mapFile->read((S8*)&j, sizeof(U32));
 			convertLEndianToHost(&j);
@@ -1487,7 +1490,7 @@ bool DIFReader::readDIO(osgDB::ifstream * mapFile, DIFInteriorObj * curLevel){
 	convertLEndianToHost(&j);
 	
 	curLevel->zonePortalList.reserve(j);
-	std::cout << "reading " << j << " entries into zonePortalList" << std::endl;
+	osg::notify(DEBUG_INFO) << "reading " << j << " entries into zonePortalList" << std::endl;
 	for(i= 0; i < curLevel->zonePortalList.capacity(); i++){
 		mapFile->read((S8*)&k, sizeof(U16));
 		convertLEndianToHost(&k);
@@ -1499,7 +1502,7 @@ bool DIFReader::readDIO(osgDB::ifstream * mapFile, DIFInteriorObj * curLevel){
 	convertLEndianToHost(&j);
 	
 	curLevel->portals.reserve(j);
-	std::cout << "reading " << j << " portals" << std::endl;
+	osg::notify(DEBUG_INFO) << "reading " << j << " portals" << std::endl;
 	DIFInteriorObj::Portal tmp_portal;
 	for(i= 0; i < curLevel->portals.capacity(); i++){
 		mapFile->read((S8*)&tmp_portal.planeIndex, sizeof(U16));
@@ -1524,7 +1527,7 @@ bool DIFReader::readDIO(osgDB::ifstream * mapFile, DIFInteriorObj * curLevel){
 	
 	curLevel->surfaces.reserve(j);
 	curLevel->lmTexGenEQs.reserve(j);
-	std::cout << "reading " << j << " surfaces and lmTexGenEQs" << std::endl;
+	osg::notify(DEBUG_INFO) << "reading " << j << " surfaces and lmTexGenEQs" << std::endl;
 	DIFInteriorObj::Surface tmp_surface;
 
 	for(i= 0; i < curLevel->surfaces.capacity(); i++){
@@ -1594,7 +1597,7 @@ bool DIFReader::readDIO(osgDB::ifstream * mapFile, DIFInteriorObj * curLevel){
 	convertLEndianToHost(&j);
 	
 	curLevel->normalLMapIndices.reserve(j);
-	std::cout << "reading " << j << " normal LMap indices" << std::endl;
+	osg::notify(DEBUG_INFO) << "reading " << j << " normal LMap indices" << std::endl;
 	for(i = 0; i < curLevel->normalLMapIndices.capacity(); i++){
 		if(curLevel->iFV >= 13){
 			mapFile->read((S8*)&j, sizeof(U32));
@@ -1613,7 +1616,7 @@ bool DIFReader::readDIO(osgDB::ifstream * mapFile, DIFInteriorObj * curLevel){
 	convertLEndianToHost(&j);
 	
 	curLevel->alarmLMapIndices.reserve(j);
-	std::cout << "reading " << j << " alarm LMap indices" << std::endl;
+	osg::notify(DEBUG_INFO) << "reading " << j << " alarm LMap indices" << std::endl;
 	for(i = 0; i < curLevel->alarmLMapIndices.capacity(); i++){
 		if(curLevel->iFV >= 13){
 			mapFile->read((S8*)&j, sizeof(U32));
@@ -1632,7 +1635,7 @@ bool DIFReader::readDIO(osgDB::ifstream * mapFile, DIFInteriorObj * curLevel){
 	convertLEndianToHost(&j);
 	
 	curLevel->nullSurfaces.reserve(j);
-	std::cout << "reading " << j << " null surfaces" << std::endl;
+	osg::notify(DEBUG_INFO) << "reading " << j << " null surfaces" << std::endl;
 	DIFInteriorObj::NullSurface tmp_nsurface;
 	for(i = 0; i < curLevel->nullSurfaces.capacity(); i++){
 		mapFile->read((S8*)&tmp_nsurface.windingStart, sizeof(U32));
@@ -1656,7 +1659,7 @@ bool DIFReader::readDIO(osgDB::ifstream * mapFile, DIFInteriorObj * curLevel){
 	curLevel->lightmaps.reserve(j);
 	curLevel->lightDirMaps.reserve(j);
 	curLevel->lightmapKeep.reserve(j);
-	std::cout << "reading " << j << " lightmaps and lightDirMaps and lightmapkeeps" << std::endl;
+	osg::notify(DEBUG_INFO) << "reading " << j << " lightmaps and lightDirMaps and lightmapkeeps" << std::endl;
 	for(i = 0; i < curLevel->lightmaps.capacity(); i++){
 		osg::ref_ptr<osg::Image> tmp1;
 		osg::ref_ptr<osg::Image> tmp2; // Should be autocleaned up by ref_ptr
@@ -1682,7 +1685,7 @@ bool DIFReader::readDIO(osgDB::ifstream * mapFile, DIFInteriorObj * curLevel){
 	convertLEndianToHost(&j);
 	
 	curLevel->solidLeafSurfaces.reserve(j);
-	std::cout << "reading " << j << " solid leaf surfaces" << std::endl;
+	osg::notify(DEBUG_INFO) << "reading " << j << " solid leaf surfaces" << std::endl;
 	for(i = 0; i < curLevel->solidLeafSurfaces.capacity(); i++){
 		mapFile->read((S8*)&j, sizeof(U32));
 		convertLEndianToHost(&j);
@@ -1692,7 +1695,7 @@ bool DIFReader::readDIO(osgDB::ifstream * mapFile, DIFInteriorObj * curLevel){
 	curLevel->numTriggerableLights = 0;
 	mapFile->read((S8*)&j, sizeof(U32));
 	convertLEndianToHost(&j);
-	std::cout << "skipping " << j << " animated lights (deprecated)" << std::endl;
+	osg::notify(DEBUG_INFO) << "skipping " << j << " animated lights (deprecated)" << std::endl;
 	i = j*(3*sizeof(U32)+2*sizeof(U16));
 	S8 * animBuf = new S8[i];
 	mapFile->read(animBuf, i*sizeof(S8));
@@ -1719,12 +1722,12 @@ bool DIFReader::readDIO(osgDB::ifstream * mapFile, DIFInteriorObj * curLevel){
 		
 		if(!(tmp_anilight.flags & DIFInteriorObj::AnimationAmbient)) curLevel->numTriggerableLights++;
 	}
-	std::cout << "\tfound " << j << " triggerable" << std::endl;
+	osg::notify(DEBUG_INFO) << "\tfound " << j << " triggerable" << std::endl;
 	//*/
 	
 	mapFile->read((S8*)&j, sizeof(U32));
 	convertLEndianToHost(&j);
-	std::cout << "skipping " << j << " light states (deprecated)" << std::endl;
+	osg::notify(DEBUG_INFO) << "skipping " << j << " light states (deprecated)" << std::endl;
 	i = j*(3*sizeof(U8)+2*sizeof(U32)+sizeof(U16));
 	animBuf = new S8[i];
 	mapFile->read(animBuf, i*sizeof(S8));
@@ -1732,7 +1735,7 @@ bool DIFReader::readDIO(osgDB::ifstream * mapFile, DIFInteriorObj * curLevel){
 	
 	mapFile->read((S8*)&j, sizeof(U32));
 	convertLEndianToHost(&j);
-	std::cout << "skipping " << j << " state datum (deprecated)" << std::endl;
+	osg::notify(DEBUG_INFO) << "skipping " << j << " state datum (deprecated)" << std::endl;
 	i = j*(2*sizeof(U32)+sizeof(U16));
 	animBuf = new S8[i];
 	mapFile->read(animBuf, i*sizeof(S8));
@@ -1740,7 +1743,7 @@ bool DIFReader::readDIO(osgDB::ifstream * mapFile, DIFInteriorObj * curLevel){
 	
 	mapFile->read((S8*)&j, sizeof(U32));
 	convertLEndianToHost(&j);
-	std::cout << "skipping state datum buffer (deprecated) with " << j << " entries" << std::endl;
+	osg::notify(DEBUG_INFO) << "skipping state datum buffer (deprecated) with " << j << " entries" << std::endl;
 	j += sizeof(U32); // skipping 4 more bytes for "U32 flags"
 	animBuf = new S8[j];
 	mapFile->read(animBuf, j*sizeof(S8));
@@ -1748,7 +1751,7 @@ bool DIFReader::readDIO(osgDB::ifstream * mapFile, DIFInteriorObj * curLevel){
 	
 	mapFile->read((S8*)&j, sizeof(U32));
 	convertLEndianToHost(&j);
-	std::cout << "skipping name buffer (deprecated) of length " << j << std::endl;
+	osg::notify(DEBUG_INFO) << "skipping name buffer (deprecated) of length " << j << std::endl;
 	animBuf = new S8[j];
 	mapFile->read(animBuf, j*sizeof(S8));
 	
@@ -1757,7 +1760,7 @@ bool DIFReader::readDIO(osgDB::ifstream * mapFile, DIFInteriorObj * curLevel){
 	mapFile->read((S8*)&j, sizeof(U32));
 	convertLEndianToHost(&j);
 	curLevel->subObjects.reserve(j);
-	std::cout << "reading " << j << " interior sub-objects" << std::endl;
+	osg::notify(DEBUG_INFO) << "reading " << j << " interior sub-objects" << std::endl;
 	InteriorSubObject * tmp_iso;
 	for(i = 0; i <curLevel->subObjects.capacity(); i++){
 		mapFile->read((S8*)&j, sizeof(U32));
@@ -1775,7 +1778,7 @@ bool DIFReader::readDIO(osgDB::ifstream * mapFile, DIFInteriorObj * curLevel){
 	mapFile->read((S8*)&j, sizeof(U32));
 	convertLEndianToHost(&j);
 	curLevel->convexHulls.reserve(j);
-	std::cout << "reading " << j << " convex hulls" << std::endl;
+	osg::notify(DEBUG_INFO) << "reading " << j << " convex hulls" << std::endl;
 	DIFInteriorObj::ConvexHull tmp_hull;
 	for(i = 0; i <curLevel->convexHulls.capacity(); i++){
 		mapFile->read((S8*)&tmp_hull.hullStart, sizeof(U32));
@@ -1821,7 +1824,7 @@ bool DIFReader::readDIO(osgDB::ifstream * mapFile, DIFInteriorObj * curLevel){
 	mapFile->read((S8*)&j, sizeof(U32));
 	convertLEndianToHost(&j); 
 	curLevel->convexHullEmitStrings.reserve(j);
-	std::cout << "reading " << j << " convex hull emit strings" << std::endl;
+	osg::notify(DEBUG_INFO) << "reading " << j << " convex hull emit strings" << std::endl;
 	for(i = 0; i < curLevel->convexHullEmitStrings.capacity(); i++){
 		mapFile->read((S8*)&flag, sizeof(U8));
 		curLevel->convexHullEmitStrings.push_back(flag);
@@ -1830,7 +1833,7 @@ bool DIFReader::readDIO(osgDB::ifstream * mapFile, DIFInteriorObj * curLevel){
 	mapFile->read((S8*)&j, sizeof(U32));
 	convertLEndianToHost(&j);
 	curLevel->hullIndices.reserve(j);
-	std::cout << "reading " << j << " hull indices" << std::endl;
+	osg::notify(DEBUG_INFO) << "reading " << j << " hull indices" << std::endl;
 	for(i = 0; i < curLevel->hullIndices.capacity(); i++){
 		mapFile->read((S8*)&j, sizeof(U32));
 		convertLEndianToHost(&j);
@@ -1840,7 +1843,7 @@ bool DIFReader::readDIO(osgDB::ifstream * mapFile, DIFInteriorObj * curLevel){
 	mapFile->read((S8*)&j, sizeof(U32));
 	convertLEndianToHost(&j);
 	curLevel->hullPlaneIndices.reserve(j);
-	std::cout << "reading " << j << " hull plane indices" << std::endl;
+	osg::notify(DEBUG_INFO) << "reading " << j << " hull plane indices" << std::endl;
 	for(i = 0; i < curLevel->hullPlaneIndices.capacity(); i++){
 		mapFile->read((S8*)&k, sizeof(U16));
 		convertLEndianToHost(&k);
@@ -1850,7 +1853,7 @@ bool DIFReader::readDIO(osgDB::ifstream * mapFile, DIFInteriorObj * curLevel){
 	mapFile->read((S8*)&j, sizeof(U32));
 	convertLEndianToHost(&j);
 	curLevel->hullEmitStringIndices.reserve(j);
-	std::cout << "reading " << j << " hull emit string indices" << std::endl;
+	osg::notify(DEBUG_INFO) << "reading " << j << " hull emit string indices" << std::endl;
 	for(i = 0; i < curLevel->hullEmitStringIndices.capacity(); i++){
 		mapFile->read((S8*)&j, sizeof(U32));
 		convertLEndianToHost(&j);
@@ -1860,7 +1863,7 @@ bool DIFReader::readDIO(osgDB::ifstream * mapFile, DIFInteriorObj * curLevel){
 	mapFile->read((S8*)&j, sizeof(U32));
 	convertLEndianToHost(&j);
 	curLevel->hullSurfaceIndices.reserve(j);
-	std::cout << "reading " << j << " hull surface indices" << std::endl;
+	osg::notify(DEBUG_INFO) << "reading " << j << " hull surface indices" << std::endl;
 	for(i = 0; i < curLevel->hullSurfaceIndices.capacity(); i++){
 		mapFile->read((S8*)&j, sizeof(U32));
 		convertLEndianToHost(&j);
@@ -1870,7 +1873,7 @@ bool DIFReader::readDIO(osgDB::ifstream * mapFile, DIFInteriorObj * curLevel){
 	mapFile->read((S8*)&j, sizeof(U32));
 	convertLEndianToHost(&j);
 	curLevel->polyListPlanes.reserve(j);
-	std::cout << "reading " << j << " polylist planes" << std::endl;
+	osg::notify(DEBUG_INFO) << "reading " << j << " polylist planes" << std::endl;
 	for(i = 0; i < curLevel->polyListPlanes.capacity(); i++){
 		mapFile->read((S8*)&k, sizeof(U16));
 		convertLEndianToHost(&k);
@@ -1880,7 +1883,7 @@ bool DIFReader::readDIO(osgDB::ifstream * mapFile, DIFInteriorObj * curLevel){
 	mapFile->read((S8*)&j, sizeof(U32));
 	convertLEndianToHost(&j);
 	curLevel->polyListPoints.reserve(j);
-	std::cout << "reading " << j << " polylist points" << std::endl;
+	osg::notify(DEBUG_INFO) << "reading " << j << " polylist points" << std::endl;
 	for(i = 0; i < curLevel->polyListPoints.capacity(); i++){
 		mapFile->read((S8*)&j, sizeof(U32));
 		convertLEndianToHost(&j);
@@ -1890,13 +1893,13 @@ bool DIFReader::readDIO(osgDB::ifstream * mapFile, DIFInteriorObj * curLevel){
 	mapFile->read((S8*)&j, sizeof(U32));
 	convertLEndianToHost(&j); 
 	curLevel->polyListStrings.reserve(j);
-	std::cout << "reading " << j << " polylist strings" << std::endl;
+	osg::notify(DEBUG_INFO) << "reading " << j << " polylist strings" << std::endl;
 	for(i = 0; i < curLevel->polyListStrings.capacity(); i++){
 		mapFile->read((S8*)&flag, sizeof(U8));
 		curLevel->polyListStrings.push_back(flag);
 	}
 	
-	std::cout << "reading " << (NUMCOORDBINS * NUMCOORDBINS) << " coord bins" << std::endl;
+	osg::notify(DEBUG_INFO) << "reading " << (NUMCOORDBINS * NUMCOORDBINS) << " coord bins" << std::endl;
 	for(i = 0; i < NUMCOORDBINS * NUMCOORDBINS; i++){
 		mapFile->read((S8*)&curLevel->coordBins[i].binStart, sizeof(U32));
 		convertLEndianToHost(&curLevel->coordBins[i].binStart);
@@ -1907,7 +1910,7 @@ bool DIFReader::readDIO(osgDB::ifstream * mapFile, DIFInteriorObj * curLevel){
 	mapFile->read((S8*)&j, sizeof(U32));
 	convertLEndianToHost(&j);
 	curLevel->coordBinIndices.reserve(j);
-	std::cout << "reading " << j << " coord bin indices" << std::endl;
+	osg::notify(DEBUG_INFO) << "reading " << j << " coord bin indices" << std::endl;
 	for(i = 0; i < curLevel->coordBinIndices.capacity(); i++){
 		mapFile->read((S8*)&k, sizeof(U16));
 		convertLEndianToHost(&k);
@@ -1917,18 +1920,18 @@ bool DIFReader::readDIO(osgDB::ifstream * mapFile, DIFInteriorObj * curLevel){
 	mapFile->read((S8*)&j, sizeof(U32));
 	convertLEndianToHost(&j);
 	curLevel->coordBinMode = j;
-	std::cout << "reading coord bin mode: " << j << std::endl;
-	std::cout << "reading ambient colors" << std::endl;
+	osg::notify(DEBUG_INFO) << "reading coord bin mode: " << j << std::endl;
+	osg::notify(DEBUG_INFO) << "reading ambient colors" << std::endl;
 	readColor(mapFile, &curLevel->baseAmbient);
 	readColor(mapFile, &curLevel->alarmAmbient);
-	std::cout << curLevel->baseAmbient.x() << " " << curLevel->baseAmbient.y() << " " << curLevel->baseAmbient.z() << " " << curLevel->baseAmbient.x() << std::endl;
-	std::cout << curLevel->alarmAmbient.x() << " " << curLevel->alarmAmbient.y() << " " << curLevel->alarmAmbient.z() << " " << curLevel->alarmAmbient.x() << std::endl;
+	osg::notify(DEBUG_INFO) << curLevel->baseAmbient.x() << " " << curLevel->baseAmbient.y() << " " << curLevel->baseAmbient.z() << " " << curLevel->baseAmbient.x() << std::endl;
+	osg::notify(DEBUG_INFO) << curLevel->alarmAmbient.x() << " " << curLevel->alarmAmbient.y() << " " << curLevel->alarmAmbient.z() << " " << curLevel->alarmAmbient.x() << std::endl;
 	
 	if(curLevel->iFV >= 10){
 		mapFile->read((S8*)&j, sizeof(U32));
 		convertLEndianToHost(&j);
 		curLevel->csMeshes.reserve(j);
-		std::cout << "reading " << j << " CSMeshes" << std::endl;
+		osg::notify(DEBUG_INFO) << "reading " << j << " CSMeshes" << std::endl;
 		for(i = 0; i<curLevel->csMeshes.capacity(); i++){
 			DIFInteriorObj::CSMesh * tmp_csmesh = new DIFInteriorObj::CSMesh;
 			readCSMesh(mapFile, tmp_csmesh);
@@ -1942,7 +1945,7 @@ bool DIFReader::readDIO(osgDB::ifstream * mapFile, DIFInteriorObj * curLevel){
 		mapFile->read((S8*)&j, sizeof(U32));
 		convertLEndianToHost(&j);
 		curLevel->normals.reserve(j);
-		std::cout << "reading " << j << " normals" << std::endl;
+		osg::notify(DEBUG_INFO) << "reading " << j << " normals" << std::endl;
 		for(i = 0; i < curLevel->normals.capacity(); i++){
 			readVec(mapFile, &tmp1);
 			curLevel->normals.push_back(tmp1);
@@ -1951,7 +1954,7 @@ bool DIFReader::readDIO(osgDB::ifstream * mapFile, DIFInteriorObj * curLevel){
 		mapFile->read((S8*)&j, sizeof(U32));
 		convertLEndianToHost(&j);
 		curLevel->texMatrices.reserve(j);
-		std::cout << "reading " << j << " tex-matrices" << std::endl;
+		osg::notify(DEBUG_INFO) << "reading " << j << " tex-matrices" << std::endl;
 		DIFInteriorObj::TexMatrix tmp_texmat;
 		for(i = 0; i < curLevel->texMatrices.capacity(); i++){
 			mapFile->read((S8*)&tmp_texmat.T,sizeof(S32));
@@ -1967,7 +1970,7 @@ bool DIFReader::readDIO(osgDB::ifstream * mapFile, DIFInteriorObj * curLevel){
 		mapFile->read((S8*)&j, sizeof(U32));
 		convertLEndianToHost(&j);
 		curLevel->texMatIndices.reserve(j);
-		std::cout << "reading " << j << " tex-mat indices" << std::endl;
+		osg::notify(DEBUG_INFO) << "reading " << j << " tex-mat indices" << std::endl;
 		for(i = 0; i < curLevel->texMatIndices.capacity(); i++){
 			mapFile->read((S8*)&j,sizeof(U32));
 			convertLEndianToHost(&j);
@@ -1983,13 +1986,13 @@ bool DIFReader::readDIO(osgDB::ifstream * mapFile, DIFInteriorObj * curLevel){
 	dummy = curLevel->iFV;
 	for(curLevel->iFV = 9; curLevel->iFV < 12; curLevel->iFV++){
 		j = ((curLevel->iFV < 10) ? 1 : 0) + ((curLevel->iFV < 11) ? 2 : 0);
-		std::cout << "would read " << j << " dummy values for iFV " << curLevel->iFV << std::endl;
+		osg::notify(DEBUG_INFO) << "would read " << j << " dummy values for iFV " << curLevel->iFV << std::endl;
 	}
 	curLevel->iFV = dummy;
-	std::cout << std::endl;
+	osg::notify(DEBUG_INFO) << std::endl;
 	//*/
 	j = ((curLevel->iFV < 10) ? 1 : 0) + ((curLevel->iFV < 11) ? 2 : 0);
-	std::cout << "reading " << j << " dummy values for iFV " << curLevel->iFV << std::endl;
+	osg::notify(DEBUG_INFO) << "reading " << j << " dummy values for iFV " << curLevel->iFV << std::endl;
 	for(i = 0; i < j; i++){
 		mapFile->read((S8*)&dummy, sizeof(U32));
 		// Don't bother converting endian-ness. ANY bit is a bad bit for zeroness.
@@ -2009,13 +2012,13 @@ bool DIFReader::readDIO(osgDB::ifstream * mapFile, DIFInteriorObj * curLevel){
 		curLevel->lightmapBorderSize = 0;
 	}
 	
-	std::cout << "Setting up zone planes " << std::endl;
+	osg::notify(DEBUG_INFO) << "Setting up zone planes " << std::endl;
 	curLevel->setupZonePlanes();
-	std::cout << "Truncating zone tree " << std::endl;
+	osg::notify(DEBUG_INFO) << "Truncating zone tree " << std::endl;
 	curLevel->truncateZoneTree();
-	std::cout << "Building surface zones " << std::endl;
+	osg::notify(DEBUG_INFO) << "Building surface zones " << std::endl;
 	curLevel->buildSurfaceZones();
-	std::cout << "Done!" << std::endl;
+	osg::notify(DEBUG_INFO) << "Done!" << std::endl;
 	
 	return true;
 	
@@ -2037,11 +2040,11 @@ bool DIFReader::readFile(const std::string & file,
 	if (!mapFile)
         return false;
 	
-	std::cout << "Reading " << file << " from " << osgDB::getFilePath(file) << " from " << osgDB::getFilePath(osgDB::getFilePath(file)) << std::endl;
+	osg::notify(DEBUG_INFO) << "Reading " << file << " from " << osgDB::getFilePath(file) << " from " << osgDB::getFilePath(osgDB::getFilePath(file)) << std::endl;
 	mapFile->read((S8*)&i, sizeof(U32));
 	convertLEndianToHost(&i);
 	dif_data->iRFV = i;
-	std::cout << "File Resource Version " << i << std::endl;
+	osg::notify(DEBUG_INFO) << "File Resource Version " << i << std::endl;
 	if(dif_data->iRFV != IRFV){
 		return false;
 	}
@@ -2049,38 +2052,38 @@ bool DIFReader::readFile(const std::string & file,
 	mapFile->read((S8*)&flag,sizeof(U8));
 	dif_data->previewIncluded = flag;
 	if(flag && !(dif_data->previewBitmap = readImage(mapFile)).valid()){
-		std::cerr << "We have a PNG - This is experimental: please don't eat us, but it failed" << std::endl;
-		return false;
+		osg::notify(FATAL) << "We have a PNG preview - This is experimental: please don't eat us, but it failed" << std::endl;
+		exit(-1);
 	}
 	mapFile->read((S8*)&i, sizeof(U32));
 	convertLEndianToHost(&i);
 	dif_data->lod_count = i;
 	dif_data->lod_list.reserve(dif_data->lod_count);
-	std::cout << "Reading " << dif_data->lod_count << " Interior LODs" << std::endl;
+	osg::notify(DEBUG_INFO) << "Reading " << dif_data->lod_count << " Interior LODs" << std::endl;
 	for(ldctr = 0; ldctr < dif_data->lod_count; ldctr++){
 		DIFInteriorObj * curLevel = new DIFInteriorObj(file);
 		
 		if(readDIO(mapFile, curLevel)){
 			dif_data->lod_list.push_back(curLevel);
 		} else{
-			std::cerr << "Reading of detail level " << ldctr << " failed" << std::endl;
-		 return false;	
+			osg::notify(FATAL) << "Reading of detail level " << ldctr << " failed" << std::endl;
+			return false;
 		}
 	}
 	
-	std::cout << std::endl << std::endl;
+	osg::notify(DEBUG_INFO) << std::endl << std::endl;
 	
 	mapFile->read((S8*)&i, sizeof(U32));
 	convertLEndianToHost(&i);
 	dif_data->subs_list.reserve(i);
-	std::cout << "Reading " << i << " sub-interiors" <<  std::endl;
+	osg::notify(DEBUG_INFO) << "Reading " << i << " sub-interiors" <<  std::endl;
 	for(ldctr = 0; ldctr < i; ldctr++){
 		DIFInteriorObj * curLevel = new DIFInteriorObj(file);
 		
 		if(readDIO(mapFile, curLevel)){
 			dif_data->subs_list.push_back(curLevel);
 		} else{
-			std::cerr << "Reading of sub-interior " << ldctr << " failed" << std::endl;
+			osg::notify(FATAL) << "Reading of sub-interior " << ldctr << " failed" << std::endl;
 			return false;	
 		}
 	}
@@ -2261,7 +2264,7 @@ osg::Node* DIFReader::junkData(){
 InteriorSubObject::~InteriorSubObject(){}
 
 bool InteriorSubObject::read(osgDB::ifstream * mapFile){
-		std::cerr << "Unknown subobject or subobject key" << std::endl;
+		osg::notify(FATAL) << "Unknown subobject or subobject key" << std::endl;
 	return false;
 }
 

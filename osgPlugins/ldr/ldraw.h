@@ -65,6 +65,8 @@ typedef double F64;
 
 #include <osgDB/Registry>
 #include <osgDB/FileNameUtils>
+#include <osg/Notify>
+
 
 #include <iostream>
 
@@ -81,7 +83,6 @@ namespace LDParse{
 		S32 uncached_files;
 		S32 cache_hits;
 	} LDLITE_PROFILE;
-	static LDLITE_PROFILE ldlite_profile;
 	
 	void pop_transform();
 	inline void zStep(S32 step, S32 pause); // we have no interest in implementing this
@@ -95,15 +96,15 @@ namespace LDParse{
 	
 	S32 LDyyparse(void);
 	S32 yylex(void);
-	S32 start_include_file(char * root_name);
+	
 	S32 stop_include_file(void);
 	S32 defer_stop_include_file(void);
 	S32 cache_mpd_subfiles(char *mpd_subfile_name);
-	std::string findLDrawFile(std::string file);
+	std::string findLDrawFile(std::string filename);
 	char * bufferFile(std::string filename);
-	void checkLDrawDirectory();
-	
-	static S32 current_type[MAX_INCLUDE_DEPTH];
+	std::deque<std::string> checkLDrawDirectory(std::string dirname);
+	osgDB::ReaderWriter::ReadResult start_include_file(std::string root_name);
+	osgDB::ReaderWriter::ReadResult initParse(std::string filename);
 	
 	// caching lex defines
 	#define MAX_CACHED_TOKENS (16*1024)
@@ -131,14 +132,17 @@ namespace LDParse{
 	// This is the heap of cached files
 	static CACHED_STREAM cached_streams[MAX_CACHED_FILES];
 	
-	static CACHED_STREAM *cached_file_stack[MAX_INCLUDE_DEPTH];
-	static S32 cached_file_stack_index=0;  // points to unused entry
-
+	extern CACHED_STREAM *cached_file_stack[MAX_INCLUDE_DEPTH];
+	extern S32 cached_file_stack_index;  // points to unused entry
+	extern LDLITE_PROFILE ldlite_profile;
+	extern S32 current_type[MAX_INCLUDE_DEPTH];
+	extern S32 deferred_flag[MAX_INCLUDE_DEPTH];
+	
 	extern osg::Matrixf *current_transform[MAX_INCLUDE_DEPTH];
 	extern S32 include_stack_ptr;
 	extern S32 transform_stack_ptr;
+	extern std::deque<std::string>* LDrawInstallation;
 	
-	static S32 deferred_flag[MAX_INCLUDE_DEPTH];
 	
 	osg::Matrixf* copymat(osg::Matrixf *mat);
 	osg::Matrixf* savemat(F32 x, F32 y, F32 z, 
@@ -149,7 +153,6 @@ namespace LDParse{
 	
 	osg::Vec3f * savept(F32 x, F32 y, F32 z);
 	osg::Vec3f * copypt(osg::Vec3f * pt);
-	S32 initParse(const char* filename);
 	
 	void transform_mat_inplace(osg::Matrixf* m);
 	S32 print_transform(osg::Matrixf* m);
@@ -173,9 +176,20 @@ namespace LDParse{
 		return sc;
 	}
 	
+	inline void emit_line(osg::Vec3f* pt1, osg::Vec3f* pt2, S32 col_index){ /* We don't care about non-poly geometry for now */ }
+	inline void emit_optline(osg::Vec3f* pt1, osg::Vec3f* pt2, osg::Vec3f* pt3, osg::Vec3f* pt4, S32 col_index){ /* We don't care about non-poly geometry for now */ }
+	inline void emit_triangle(osg::Vec3f* pt1, osg::Vec3f* pt2, osg::Vec3f* pt3, S32 col_index){
+		// Hold your horses, this could get complicated
+	}
+	inline void emit_quad(osg::Vec3f* pt1, osg::Vec3f* pt2, osg::Vec3f* pt3, osg::Vec3f* pt4, S32 col_index){
+		// The guess is that drawing two triangles will be faster than having more Element Buffers for quads
+		emit_triangle(pt1, pt2, pt4, col_index);
+		emit_triangle(pt2, pt3, pt4, col_index);
+	}
+	
 #define AssertFatal(x, y)         \
 { if (!x) \
-{ std::cerr << y << std::endl; exit(-1); } }
+{ osg::notify(osg::FATAL) << y << std::endl; exit(-1); } }
 
 	
 };

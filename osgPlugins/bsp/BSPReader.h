@@ -25,10 +25,7 @@ namespace bsp
 		BSPReader();
 		virtual ~BSPReader(){};
 		virtual bool readFile(const std::string& file,
-					  const osgDB::ReaderWriter::Options*)/*{
-			std::cout << "THIS SHOULD NOT HAPPEN" << std::endl;
-			return false;
-		}*/;
+					  const osgDB::ReaderWriter::Options*);
 		
 		osg::ref_ptr<osg::Node>  getRootNode(){
 			return root_node;

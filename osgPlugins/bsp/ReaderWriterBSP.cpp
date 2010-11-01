@@ -100,9 +100,7 @@ namespace bsp{
 				
 			}
 			if(bspReader){
-				//std::cout << "We have selected a reader" << std::endl;
 				ReadResult retval = (bspReader->readFile(fileName, options)) ? ReadResult(bspReader->getRootNode().get()) : ReadResult::ERROR_IN_READING_FILE;
-				//std::cout << "And, we're back" << std::endl;
 				delete bspReader; // I would think this is a memory leak, but it errors if I don't leave it there?
 				return retval;
 			} else{

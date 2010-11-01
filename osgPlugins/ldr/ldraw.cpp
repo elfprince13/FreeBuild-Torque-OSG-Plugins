@@ -15,67 +15,72 @@ using namespace LDParse;
 
 namespace LDParse{
 	
+	std::deque<std::string>* LDrawInstallation = NULL;
+	
 	S32 transform_stack_ptr = 0;
 	S32 include_stack_ptr = 0;
 	osg::Matrixf *current_transform[MAX_INCLUDE_DEPTH];
 	
-	void checkLDrawDirectory(){
-		bool error = false;
-		std::cout << "Initializing LDraw Subsystem..." << std::endl;
-		
-		char * FullPath = dStrdup(Con::getVariable("$pref::ResourceManager::LDrawDirectory"));
-		// Platform::isDirectory expects no trailing / so make sure we conform
-		//if( FullPath[ dStrlen( FullPath ) - 1 ] == '/' )	//We don't need to worry about this, the console does it MAGIC for us.
-		//	FullPath[ dStrlen( FullPath ) - 1 ] = 0x00;
-		
-		// A bad path!?  For shame...
-		if( !Platform::isDirectory( FullPath )){
-			error = true;
+	CACHED_STREAM *cached_file_stack[MAX_INCLUDE_DEPTH];
+	S32 cached_file_stack_index=0;  // points to unused entry
+	LDLITE_PROFILE ldlite_profile;
+	S32 current_type[MAX_INCLUDE_DEPTH];
+	S32 deferred_flag[MAX_INCLUDE_DEPTH];
+	
+	
+	std::deque<std::string> checkLDrawDirectory(std::string dirname){
+		std::deque<std::string> ppmPaths;
+		ppmPaths.clear();
+		if( osgDB::fileType(dirname) == osgDB::DIRECTORY){
+			std::string primsPath = osgDB::concatPaths(dirname, std::string("P"));
+			std::string partsPath = osgDB::concatPaths(dirname, std::string("PARTS"));
+			std::string modelPath = osgDB::concatPaths(dirname, std::string("MODELS"));
+			if( osgDB::fileType(primsPath) == osgDB::DIRECTORY &&
+				osgDB::fileType(partsPath) == osgDB::DIRECTORY && 
+				osgDB::fileType(modelPath) == osgDB::DIRECTORY){
+				ppmPaths.resize(3);
+				ppmPaths[0] = primsPath;
+				ppmPaths[1] = partsPath;
+				ppmPaths[2] = modelPath;
+			}
 		}
-		else if (!Platform::isSubDirectory(FullPath, "P") || !Platform::isSubDirectory(FullPath, "PARTS") || !Platform::isSubDirectory(FullPath, "MODELS")){
-			error = true;
-		}
 		
-		delete [] FullPath;
+		if(!ppmPaths.size())
+			osg::notify(osg::WARN) << "Path '" << dirname << "' does not reference a valid LDraw installation" << std::endl;
 		
-		if(error)
-			std::cerr << "Please point us (see supported options) at a valid LDraw installation" << std::endl;
-		
-		return;// !error;
+		return ppmPaths;
 	}
 	
 	char * bufferFile(std::string filename){
 		
-		FileStream *s = new FileStream;
+		osgDB::ifstream  stream;
+		stream.open(filename.c_str(), std::ios::binary);
+		if(!stream.good()){
+			return NULL;
+		}
+		U32 begin = stream.tellg();
+		stream.seekg (0, std::ios::end);
+		U32 end = stream.tellg();
+		U32 fsize = end-begin;
 		char* script;
-			if( !s->open (filename, FileStream::Read) )
-			{
-				delete s;
-				return NULL;
-			}
-			U32 fsize = s->getStreamSize ();
-			
-		if(s)
-		{
+
 			script = new char [fsize+2];
-			s->read(fsize, script);
-			s->close();
-			delete s;
+			stream.read(script, fsize);
+			stream.close();
 			script[fsize+1] = 0;
 			script[fsize] = 0;
-		}
 		
 		if (!fsize || !script)
 		{
 			delete [] script;
-			std::cerr << "\tcouldn't buffer LDraw file " << filename << std::endl;
+			osg::notify(osg::WARN) << "\tcouldn't buffer LDraw file " << filename << std::endl;
 			return NULL;
 		}
 		return script;
 	}
 	
 	
-	std::string findLDrawFile(std::string file/*, Vector<StringTableEntry> mpdSubfileList*/)
+	std::string findLDrawFile(std::string filename/*, Vector<StringTableEntry> mpdSubfileList*/)
 	{
 		/*if(mpdSubfileList.size()){
 			for(Vector<StringTableEntry>::iterator i = mpdSubfileList.begin(); i != mpdSubfileList.end(); i++){
@@ -85,62 +90,13 @@ namespace LDParse{
 			}
 		}*/
 		
-		std::string path = StringTable->insert(Con::getVariable("$pref::ResourceManager::LdrawDirectory"));
-		std::vector<Platform::FileInfo> fileVector;
-		
-		// construct the full file path. we need this to get the file size and to recurse
-		U32 len = strlen(path) + 8;
-		char* pathbuf = new char[len];
-		sprintf( pathbuf, "%s/P", path);
-		pathbuf[len] = '\0';
-		
-		Platform::dumpPath( pathbuf, fileVector, 0 ); 
-
-		sprintf(pathbuf, "%s/PARTS", path);
-		Platform::dumpPath( pathbuf, fileVector, 3 ); 
-
-		sprintf(pathbuf, "%s/MODELS", path);
-		Platform::dumpPath( pathbuf, fileVector, 500 ); 
-		
-		delete [] pathbuf;
-		
-		for(std::vector<Platform::FileInfo>::iterator j =  fileVector.begin(); j != fileVector.end(); j++){
-			if(osgDB::equalCaseInsensitive(j->pFileName, file)){
-				char pReturn[1024]; 
-				sprintf(pReturn, "%s/%s", j->pFullPath, j->pFileName);
-				pReturn[strlen(pReturn)] = '\0';
-				return std::string(pReturn);
-			}
+		//Assumes a beginning->end traversal to ensure proper precedence.
+		if(!LDrawInstallation){
+			osg::notify(osg::FATAL) << "findLDrawFile called before LDParse::LDrawInstallation was initialized" << std::endl;
+			exit(-1);
 		}
-		//const char* fullpath = buildPath(path, file);
-		return NULL;
+		return osgDB::findFileInPath(filename, *LDrawInstallation);
 	}
 	
 	
 };
-
-/*
-ConsoleFunctionGroupBegin(LDrawFuncs, "These are things from LDraw.cc");
-
-ConsoleFunction(LDrawInit, void, 1, 1, "() Initializes the LDraw system, and checks for a valid LDraw directory")
-{
-	LDParse::checkLDrawDirectory();
-}
-
-ConsoleFunction(testLDrawFindFile, const char *, 2, /*3*//*2, "(filename [, fname2]) looks for a file"){
-	Vector<StringTableEntry> tsubfiles(5);
-	StringTableEntry ste = StringTable->insert(argv[1]);
-	if (argc > 2){
-		StringTableEntry ste2 = StringTable->insert(argv[2]);
-		tsubfiles.push_back(ste2);
-	}
-	return LDParse::findLDrawFile(ste/*, tsubfiles*//*);
-}
-
-ConsoleFunction(testLDrawParseFile, S32, 2, 2, "(filename)"){
-	return LDParse::initParse(argv[1]);
-}
-
-ConsoleFunctionGroupEnd(LDrawFuncs);
-*/
-

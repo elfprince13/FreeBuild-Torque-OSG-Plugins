@@ -14,6 +14,7 @@
 #include <osg/Endian>
 #include <osg/TexGen>
 #include "BSPReader.h"
+#include <osg/Notify>
 
 #ifndef _DIFREADER_H_
 #define _DIFREADER_H_
@@ -192,25 +193,25 @@ namespace bsp
 		
 		inline bool isBSPSolidLeaf(U32 index) const
 		{
-			if(!isBSPLeafIndex(index)) std::cerr << "Error(isBSPSolidLeaf), only call for leaves!" << std::endl;
+			if(!isBSPLeafIndex(index)) osg::notify(osg::WARN) << "Error(isBSPSolidLeaf), only call for leaves!" << std::endl;
 			return (iFV >= 14) ? (index & 0x40000) != 0 : (index & 0x4000) != 0;
 		}
 		
 		inline bool isBSPEmptyLeaf(U32 index) const
 		{
-			if(!isBSPLeafIndex(index)) std::cerr << "Error(isBSPEmptyLeaf), only call for leaves!" << std::endl;
+			if(!isBSPLeafIndex(index)) osg::notify(osg::WARN) << "Error(isBSPEmptyLeaf), only call for leaves!" << std::endl;
 			return (iFV >= 14) ? !(index & 0x40000) : !(index & 0x4000);
 		}
 		
 		inline U16 getBSPSolidLeafIndex(U32 index) const
 		{
-			if(!isBSPLeafIndex(index)) std::cerr << "Error(getBSPSolidLeafIndex), only call for leaves!" << std::endl;
+			if(!isBSPLeafIndex(index)) osg::notify(osg::WARN) << "Error(getBSPSolidLeafIndex), only call for leaves!" << std::endl;
 			return (iFV >= 14) ? U16(index & ~0xC0000) : U16(index & ~0xC000);
 		}
 		
 		inline U16 getBSPEmptyLeafZone(U32 index) const
 		{
-			if(!isBSPLeafIndex(index)) std::cerr << "Error(getBSPEmptyLeafZone), only call for leaves!" << std::endl;
+			if(!isBSPLeafIndex(index)) osg::notify(osg::WARN) << "Error(getBSPEmptyLeafZone), only call for leaves!" << std::endl;
 			return (iFV >= 14) ? U16(index & ~0xC0000) : U16(index & ~0xC000);
 		}
 		

@@ -7,6 +7,8 @@
  *
  */
 
+#include "ldraw.h"
+
 namespace ldr{
 	
 	class ReaderWriterLDR : public osgDB::ReaderWriter
