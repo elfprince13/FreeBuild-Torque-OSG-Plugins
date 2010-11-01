@@ -58,10 +58,10 @@ namespace LDParse{
 		if(!stream.good()){
 			return NULL;
 		}
-		U32 begin = stream.tellg();
 		stream.seekg (0, std::ios::end);
-		U32 end = stream.tellg();
-		U32 fsize = end-begin;
+		U32 fsize = stream.tellg();
+		stream.seekg (0, std::ios::beg);
+		
 		char* script;
 
 			script = new char [fsize+2];

@@ -187,10 +187,14 @@ namespace LDParse{
 		emit_triangle(pt2, pt3, pt4, col_index);
 	}
 	
-#define AssertFatal(x, y)         \
-{ if (!x) \
-{ osg::notify(osg::FATAL) << y << std::endl; exit(-1); } }
-
+	inline void AssertFatal(bool x, std::string y)
+	{ 
+		if (!x){
+			osg::notify(osg::FATAL) << y << std::endl; 
+			exit(-1); 
+		} 
+	}
+	
 	
 };
 
