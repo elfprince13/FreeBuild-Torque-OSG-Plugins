@@ -261,10 +261,11 @@ osg::Node *  DIFInteriorObj::buildInteriorNode(){
 									yPlane.z()*spacePT.z()+
 									yPlane.w());
 					dfUVs->push_back(uvPT);
-					//tg = lmTexGenEQs[surfaceIndex];
-					//xPlane = tg.xPlane;
-					//yPlane = tg.yPlane;
-					/*uvPT.set(xPlane.x()*spacePT.x()+
+					//....if we ever set up proper lightmaps this next bit may need to be changed a bit.
+					tg = lmTexGenEQs[surfaceIndex];
+					xPlane = tg.xPlane;
+					yPlane = tg.yPlane;
+					uvPT.set(xPlane.x()*spacePT.x()+
 							 xPlane.y()*spacePT.y()+
 							 xPlane.z()*spacePT.z()+
 							 xPlane.w(),
@@ -272,7 +273,7 @@ osg::Node *  DIFInteriorObj::buildInteriorNode(){
 							 yPlane.y()*spacePT.y()+
 							 yPlane.z()*spacePT.z()+
 							 yPlane.w());
-					lmUVs->push_back(uvPT);*/
+					lmUVs->push_back(uvPT);
 					// okay, moving on
 					//IMPair mapping;
 					//mapping.vertStart = startVert;
@@ -297,8 +298,8 @@ osg::Node *  DIFInteriorObj::buildInteriorNode(){
 				delete mPerTex[j];
 				
 				
-				texIndex = j / numLights; //getI(numMats, minML, j);
-				normLMIndex = j % numLights; //getI(numLights, minML, j);
+				texIndex = j / numLights;
+				normLMIndex = j % numLights;
 				
 				// Convert indices to DrawElementsUInt
 				DrawElementsUInt* indices = new DrawElementsUInt(osg::PrimitiveSet::TRIANGLES);
@@ -312,7 +313,7 @@ osg::Node *  DIFInteriorObj::buildInteriorNode(){
 				zoneIG->setVertexArray(verts);
 				zoneIG->setNormalArray(norms);
 				zoneIG->setTexCoordArray(1, dfUVs);
-				//zoneIG->setTexCoordArray(0, lmUVs);
+				zoneIG->setTexCoordArray(0, lmUVs);
 				zoneIG->addPrimitiveSet(indices);
 				// Set texture state! Go-go-go!
 				osg::ref_ptr<osg::Texture2D> dfTex;
@@ -422,15 +423,11 @@ osg::Node *  DIFInteriorObj::buildInteriorNode(){
 				if(mlsIndices[texIndex] != NULL){
 					curGeo = mlGeo[texIndex];
 					curIndices = mlsIndices[texIndex];
-					//dstIndices = mldIndices[texIndex];
 					vmapL2G = vmaps[texIndex];
 				} else{
 					curGeo = new osg::Geometry();
 					curGeo->setUseVertexBufferObjects(true);
 					curIndices = new std::vector<U16>;
-					//dstIndices = new std::vector<U16>;
-					//vmapL2G = new std::vector<U16>;
-					//vmapL2G = new std::vector<IMPair>;
 					vmapL2G = new std::map<U16,U16>;
 					mlsIndices[texIndex] = curIndices;
 					//mldIndices[texIndex] = dstIndices;
