@@ -100,8 +100,10 @@ namespace bsp{
 				
 			}
 			if(bspReader){
+				osg::setNotifyLevel(DEBUG_INFO);
 				ReadResult retval = (bspReader->readFile(fileName, options)) ? ReadResult(bspReader->getRootNode().get()) : ReadResult::ERROR_IN_READING_FILE;
 				delete bspReader; // I would think this is a memory leak, but it errors if I don't leave it there?
+				osg::setNotifyLevel(NOTICE);
 				return retval;
 			} else{
 				return ReadResult::FILE_NOT_HANDLED;

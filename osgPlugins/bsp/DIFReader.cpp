@@ -155,15 +155,19 @@ osg::Node *  DIFInteriorObj::buildInteriorNode(){
 	i = numMats * numLights;
 	osg::notify(DEBUG_INFO) << "Allocating vector holding pen for " << i << " = ("<< numMats << "*" << numLights <<") materials" << std::endl;
 	std::vector<osg::Geometry*> gPerTex(i,NULL);
+	std::vector<std::map<U32,U32>* > mPerTex(i,NULL); // make sure we delete this vector afterwards
 	std::vector<std::vector<U32>* > iPerTex(i,NULL); // make sure we delete this vector afterwards
+	
 	for(i = 0; i < zones.size(); i++){
 		for(j = 0; j < iPerTex.size(); j++){
 			iPerTex[j] = NULL;
+			mPerTex[j] = NULL;
 			gPerTex[j] = NULL;
 		}
 		osg::Geode* zoneI = new osg::Geode();
 		osg::Geometry* zoneIG = NULL;
 		std::vector<U32>* localIndices = NULL;	
+		std::map<U32,U32>* vmapL2G = NULL;
 		
 		Zone z = zones[i];
 		U8 flag;
@@ -184,11 +188,15 @@ osg::Node *  DIFInteriorObj::buildInteriorNode(){
 				if(iPerTex[texIndex] != NULL){
 					zoneIG = gPerTex[texIndex];
 					localIndices = iPerTex[texIndex];
+					vmapL2G = mPerTex[texIndex];
 				} else{
 					zoneIG = new osg::Geometry();
 					zoneIG->setUseVertexBufferObjects(true);
 					localIndices = new std::vector<U32>;
+					vmapL2G = new std::map<U32,U32>;
+					vmapL2G->clear();
 					iPerTex[texIndex] = localIndices;
+					mPerTex[texIndex] = vmapL2G;
 					gPerTex[texIndex] = zoneIG;	// Geometry/material
 				}
 			}
@@ -212,18 +220,26 @@ osg::Node *  DIFInteriorObj::buildInteriorNode(){
 			}
 			
 			U32 startVert = verts->size();
-			std::vector<U32> vmapL2G;
-			vmapL2G.clear();
+			//std::vector<U32> vmapL2G;
+			//vmapL2G.clear();
 			for(k = 0; k < localIndices->size()-startIndex; k++){
-				bool alreadyStored = false;
-				for(l = 0; !alreadyStored && l<k; alreadyStored = (*localIndices)[startIndex+l++] == (*localIndices)[startIndex+k]);
+				std::map<U32,U32>::iterator it = vmapL2G->find((*localIndices)[startIndex+k]);
+				//bool alreadyStored = false;
+				bool alreadyStored = it != vmapL2G->end();
+				//for(l = 0; !alreadyStored && l<k; alreadyStored = (*localIndices)[startIndex+l++] == (*localIndices)[startIndex+k]);
 				if(alreadyStored){
-					for(l = 0; l < vmapL2G.size(); l++){
-						if(vmapL2G[l] == (*localIndices)[startIndex+k]){
-							(*localIndices)[startIndex+k] = startVert + vmapL2G[l];
-							break;
-						}
-					}
+				//	for(l = 0; l < vmapL2G->size(); l++){
+				//		if((*vmapL2G)[l].index.iD == (*localIndices)[startIndex+k]){
+				//			U32 tmp_2 = (*vmapL2G)[l].index.iD + (*vmapL2G)[l].vertStart;
+				//			if(tmp_2 >= verts->size()){
+				//				osg::notify(osg::DEBUG_INFO) << "HELP! HELP! THIS IS BAD!" << std::endl;
+				//				osg::notify(osg::DEBUG_INFO) << tmp_2 << " being assigned as an index, but only " << verts->size() << " verts" << std::endl;
+				//			}
+				//			(*localIndices)[startIndex+k] = (*vmapL2G)[l].index.iD+(*vmapL2G)[l].vertStart;
+				//			break;
+				//		}
+				//	}
+					(*localIndices)[startIndex+k] = it->second;
 				} else{
 					// Interleave this some day with a custom drawable -- http://forum.openscenegraph.org/viewtopic.php?t=1058
 					// Especially given low-end specs
@@ -245,10 +261,10 @@ osg::Node *  DIFInteriorObj::buildInteriorNode(){
 									yPlane.z()*spacePT.z()+
 									yPlane.w());
 					dfUVs->push_back(uvPT);
-					tg = lmTexGenEQs[surfaceIndex];
-					xPlane = tg.xPlane;
-					yPlane = tg.yPlane;
-					uvPT.set(xPlane.x()*spacePT.x()+
+					//tg = lmTexGenEQs[surfaceIndex];
+					//xPlane = tg.xPlane;
+					//yPlane = tg.yPlane;
+					/*uvPT.set(xPlane.x()*spacePT.x()+
 							 xPlane.y()*spacePT.y()+
 							 xPlane.z()*spacePT.z()+
 							 xPlane.w(),
@@ -256,10 +272,13 @@ osg::Node *  DIFInteriorObj::buildInteriorNode(){
 							 yPlane.y()*spacePT.y()+
 							 yPlane.z()*spacePT.z()+
 							 yPlane.w());
-					lmUVs->push_back(uvPT);
+					lmUVs->push_back(uvPT);*/
 					// okay, moving on
-					vmapL2G.push_back(l);
-					
+					//IMPair mapping;
+					//mapping.vertStart = startVert;
+					//mapping.index.iD = l;
+					//vmapL2G->push_back(mapping);
+					(*vmapL2G)[l] = (*localIndices)[startIndex+k];
 				}
 			}
 		}
@@ -275,7 +294,7 @@ osg::Node *  DIFInteriorObj::buildInteriorNode(){
 				
 				zoneIG = gPerTex[j];
 				localIndices = iPerTex[j];
-				
+				delete mPerTex[j];
 				
 				
 				texIndex = j / numLights; //getI(numMats, minML, j);
@@ -293,7 +312,7 @@ osg::Node *  DIFInteriorObj::buildInteriorNode(){
 				zoneIG->setVertexArray(verts);
 				zoneIG->setNormalArray(norms);
 				zoneIG->setTexCoordArray(1, dfUVs);
-				zoneIG->setTexCoordArray(0, lmUVs);
+				//zoneIG->setTexCoordArray(0, lmUVs);
 				zoneIG->addPrimitiveSet(indices);
 				// Set texture state! Go-go-go!
 				osg::ref_ptr<osg::Texture2D> dfTex;
@@ -324,7 +343,7 @@ osg::Node *  DIFInteriorObj::buildInteriorNode(){
 				lmTexture->setImage(lightmaps[normLMIndex].get());
 				lmTexture->setDataVariance(osg::Object::STATIC);
 				//geoState->setTextureAttribute(0, lmEnv, StateAttribute::ON);
-				//geoState->setTextureAttributeAndModes(0, dfTex.get()/*lmTexture*/,StateAttribute::ON);
+				//geoState->setTextureAttributeAndModes(0, dfTex.get(),StateAttribute::ON);//lmTexture,StateAttribute::ON);
 				geoState->setTextureAttribute(1, dfEnv, StateAttribute::ON);
 				geoState->setTextureAttributeAndModes(1, dfTex.get(),StateAttribute::ON);
 				
@@ -335,26 +354,27 @@ osg::Node *  DIFInteriorObj::buildInteriorNode(){
 		}
 		intnode_root->addChild(zoneI);
 		
-		//Then embedded meshes
-		//We'll need transform + scale state for these.
 		
 	}
+	//Then embedded meshes
+	//We'll need transform + scale state for these.
 	
 	// Unfortunately, zoning is untrustworth here we should
 	// consider a bounding-box implementation of some sort
 	// to place meshes in the zone groups. But...
 	// don't worry about it for now
 	
-	std::vector<U16>** mlIndices;
+	std::vector<U16>** mlsIndices;
+	std::map<U16,U16>** vmaps;
 	osg::Geometry** mlGeo;
 	U32 m,n;
 	osg::Geode* meshI;
 	for(i = 0; i < csMeshes.size(); i++){
+		
 		verts = new osg::Vec3Array();
 		norms = new osg::Vec3Array();
 		dfUVs = new osg::Vec2Array();
 		lmUVs = new osg::Vec2Array();
-		//std::vector<U16> indices;
 		
 		verts->clear();
 		norms->clear();
@@ -370,25 +390,28 @@ osg::Node *  DIFInteriorObj::buildInteriorNode(){
 		osg::Vec3f row1(rows[4],rows[5],rows[6]);
 		osg::Vec3f row2(rows[8],rows[9],rows[10]);
 		F32 det =	row0.x() * (row1.y() * row2.z() - row1.z() * row2.y()) -
-					row0.y() * (row1.x() * row2.z() - row1.z() * row2.x()) +
-					row0.z() * (row1.x() * row2.y() - row1.y() * row2.x());
+		row0.y() * (row1.x() * row2.z() - row1.z() * row2.x()) +
+		row0.z() * (row1.x() * row2.y() - row1.y() * row2.x());
 		U8 flipped = (det < 0.0f) & 0x01; // Until we figure out what's going on with transforms, best to ignore this.
 		
 		
 		meshI = new osg::Geode();
 		n = csm->csMaterialList.materials.materials.size();
-		mlIndices = new std::vector<U16>*[n*numLights];// Unlike with interior surfaces
+		mlsIndices = new std::vector<U16>*[n*numLights];// Unlike with interior surfaces
+		vmaps = new std::map<U16,U16>*[n*numLights];
 		mlGeo = new osg::Geometry*[n*numLights];		 // all of the textures should be
 		U32 texIndex;							 // in one place.
 		
 		for(j = 0; j < n*numLights; j++){
-			mlIndices[j] = NULL;
+			mlsIndices[j] = NULL;
+			vmaps[j] = NULL;
 			mlGeo[j] = NULL;
 		}
 		
 		bool flag;
 		osg::Geometry* curGeo = NULL;
 		std::vector<U16>* curIndices = NULL;
+		std::map<U16,U16>* vmapL2G = NULL;
 		osg::notify(DEBUG_INFO) << "mesh " << i << " has " << csm->primitives.size() << " primitives" << std::endl;
 		for(j = 0; j < csm->primitives.size(); j++){
 			CSMPrimitive * primitive = &(csm->primitives[j]);
@@ -396,19 +419,28 @@ osg::Node *  DIFInteriorObj::buildInteriorNode(){
 			flag = (j == 0) || (texIndex != m);
 			texIndex = m;
 			if(flag){
-				if(mlIndices[texIndex] != NULL){
+				if(mlsIndices[texIndex] != NULL){
 					curGeo = mlGeo[texIndex];
-					curIndices = mlIndices[texIndex];
+					curIndices = mlsIndices[texIndex];
+					//dstIndices = mldIndices[texIndex];
+					vmapL2G = vmaps[texIndex];
 				} else{
 					curGeo = new osg::Geometry();
 					curGeo->setUseVertexBufferObjects(true);
 					curIndices = new std::vector<U16>;
-					mlIndices[texIndex] = curIndices;
+					//dstIndices = new std::vector<U16>;
+					//vmapL2G = new std::vector<U16>;
+					//vmapL2G = new std::vector<IMPair>;
+					vmapL2G = new std::map<U16,U16>;
+					mlsIndices[texIndex] = curIndices;
+					//mldIndices[texIndex] = dstIndices;
 					mlGeo[texIndex] = curGeo;	// Geometry/material
+					vmaps[texIndex] = vmapL2G;
+					vmapL2G->clear();
 				}
-				if(i > 1) osg::notify(DEBUG_INFO) << "\tcurIndices has index " << texIndex << " and size " << curIndices->size() << std::endl;
+		//		if(i > 1) osg::notify(DEBUG_INFO) << "\tcurIndices has index " << texIndex << " and size " << curIndices->size() << std::endl;
 			} else{
-				if(i > 1) osg::notify(DEBUG_INFO) << "\ttexIndex didn't change" << std::endl;
+		//		if(i > 1) osg::notify(DEBUG_INFO) << "\ttexIndex didn't change" << std::endl;
 			}
 			
 			U32 startIndex = curIndices->size();
@@ -424,37 +456,34 @@ osg::Node *  DIFInteriorObj::buildInteriorNode(){
 					curIndices->push_back(csm->indices[primitive->start + k - 1]);
 					curIndices->push_back(csm->indices[primitive->start + k]);
 				}
+				//dstIndices->push_back(65535);
+				//dstIndices->push_back(65535);
+				//dstIndices->push_back(65535);
 			}
 			
-			if(i > 1) osg::notify(DEBUG_INFO) <<"\tnow curIndices has size " << curIndices->size() << std::endl;
+			//if(i > 1) osg::notify(DEBUG_INFO) <<"\tnow curIndices has size " << curIndices->size() << std::endl;
 			
-			std::vector<U16> vmapL2G;
-			vmapL2G.clear();
+			//std::vector<U16> vmapL2G;
+			//vmapL2G.clear();
 			U32 startVert = verts->size();
 			for(k = 0; k < curIndices->size()-startIndex; k++){
-				bool alreadyStored = false;
-				for(l = 0; !alreadyStored && l<k; alreadyStored = (*curIndices)[startIndex+l++] == (*curIndices)[startIndex+k]);
+				std::map<U16,U16>::iterator it = vmapL2G->find((*curIndices)[startIndex+k]);
+				bool alreadyStored = it != vmapL2G->end();
 				if(alreadyStored){
-					for(l = 0; l < vmapL2G.size(); l++){
-						if(vmapL2G[l] == (*curIndices)[startIndex+k]){
-							(*curIndices)[startIndex+k] = startVert + vmapL2G[l];
-							break;
-						}
-					}
+					(*curIndices)[startIndex+k] = it->second;
 				} else{
 					// Interleave this some day with a custom drawable -- http://forum.openscenegraph.org/viewtopic.php?t=1058
 					// Especially given low-end specs
 					l = (*curIndices)[startIndex+k];
 					(*curIndices)[startIndex+k] = verts->size();
-					if(l >= csm->verts.size()) osg::notify(WARN) << "OH STINK" << std::endl;
+					if(l >= csm->verts.size()) osg::notify(osg::DEBUG_INFO) << "OH STINK" << std::endl;
 					verts->push_back(csm->verts[l]);
 					norms->push_back(csm->norms[l]);
 					// fill in tex coords :)
 					dfUVs->push_back(csm->diffuseUVs[l]);
 					lmUVs->push_back(csm->lightmapUVs[l]);
 					// okay, moving on
-					vmapL2G.push_back(l);
-					
+					(*vmapL2G)[l] = (*curIndices)[startIndex+k];
 				}
 			}
 		}
@@ -465,15 +494,16 @@ osg::Node *  DIFInteriorObj::buildInteriorNode(){
 		
 		
 		/*F32* pts = verts->getDataPointer();
-		for(j = 0; j<verts->size(); j++){
-			osg::notify(DEBUG_INFO) << "vert " << pts[3*j] << " " << pts[3*j+1] << " " << pts[3*j+2] << std::endl;
-		}//*/
+		 for(j = 0; j<verts->size(); j++){
+		 osg::notify(DEBUG_INFO) << "vert " << pts[3*j] << " " << pts[3*j+1] << " " << pts[3*j+2] << std::endl;
+		 }//*/
 		
 		for(j = 0; j < n*numLights; j++){
-			if(mlIndices[j] != NULL){
+			if(mlsIndices[j] != NULL){
 				osg::StateSet* geoState = new osg::StateSet();
 				curGeo = mlGeo[j];
-				curIndices = mlIndices[j];
+				curIndices = mlsIndices[j];
+				delete vmaps[j];
 				
 				texIndex = j / numLights;	// Diffuse texture index
 				m = j % numLights;			// Light texture index
@@ -485,7 +515,7 @@ osg::Node *  DIFInteriorObj::buildInteriorNode(){
 					indices->push_back((*curIndices)[k]);
 				}
 				delete curIndices;
-				mlIndices[j] = NULL;
+				mlsIndices[j] = NULL;
 				
 				curGeo->setVertexArray(verts);
 				curGeo->setNormalArray(norms);
@@ -548,10 +578,11 @@ osg::Node *  DIFInteriorObj::buildInteriorNode(){
 		//intnode_root->addChild(meshTransformGroup);
 		intnode_root->addChild(meshI);
 		osg::notify(DEBUG_INFO)<< verts->size() << " vertices for mesh " << i << std::endl;
-		delete mlIndices;
-		delete mlGeo;
+		delete [] mlsIndices;
+		delete [] vmaps;
+		delete [] mlGeo;
 	}
-
+	
 	return intnode_root;
 }
 
