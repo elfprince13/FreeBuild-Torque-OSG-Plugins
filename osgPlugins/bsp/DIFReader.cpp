@@ -219,26 +219,10 @@ osg::Node *  DIFInteriorObj::buildInteriorNode(){
 				lNorms.push_back(getPointNormal(surfaceIndex, k));
 			}
 			
-			U32 startVert = verts->size();
-			//std::vector<U32> vmapL2G;
-			//vmapL2G.clear();
 			for(k = 0; k < localIndices->size()-startIndex; k++){
 				std::map<U32,U32>::iterator it = vmapL2G->find((*localIndices)[startIndex+k]);
-				//bool alreadyStored = false;
 				bool alreadyStored = it != vmapL2G->end();
-				//for(l = 0; !alreadyStored && l<k; alreadyStored = (*localIndices)[startIndex+l++] == (*localIndices)[startIndex+k]);
 				if(alreadyStored){
-				//	for(l = 0; l < vmapL2G->size(); l++){
-				//		if((*vmapL2G)[l].index.iD == (*localIndices)[startIndex+k]){
-				//			U32 tmp_2 = (*vmapL2G)[l].index.iD + (*vmapL2G)[l].vertStart;
-				//			if(tmp_2 >= verts->size()){
-				//				osg::notify(osg::DEBUG_INFO) << "HELP! HELP! THIS IS BAD!" << std::endl;
-				//				osg::notify(osg::DEBUG_INFO) << tmp_2 << " being assigned as an index, but only " << verts->size() << " verts" << std::endl;
-				//			}
-				//			(*localIndices)[startIndex+k] = (*vmapL2G)[l].index.iD+(*vmapL2G)[l].vertStart;
-				//			break;
-				//		}
-				//	}
 					(*localIndices)[startIndex+k] = it->second;
 				} else{
 					// Interleave this some day with a custom drawable -- http://forum.openscenegraph.org/viewtopic.php?t=1058
@@ -275,10 +259,6 @@ osg::Node *  DIFInteriorObj::buildInteriorNode(){
 							 yPlane.w());
 					lmUVs->push_back(uvPT);
 					// okay, moving on
-					//IMPair mapping;
-					//mapping.vertStart = startVert;
-					//mapping.index.iD = l;
-					//vmapL2G->push_back(mapping);
 					(*vmapL2G)[l] = (*localIndices)[startIndex+k];
 				}
 			}
@@ -453,16 +433,12 @@ osg::Node *  DIFInteriorObj::buildInteriorNode(){
 					curIndices->push_back(csm->indices[primitive->start + k - 1]);
 					curIndices->push_back(csm->indices[primitive->start + k]);
 				}
-				//dstIndices->push_back(65535);
-				//dstIndices->push_back(65535);
-				//dstIndices->push_back(65535);
+
 			}
 			
 			//if(i > 1) osg::notify(DEBUG_INFO) <<"\tnow curIndices has size " << curIndices->size() << std::endl;
 			
-			//std::vector<U16> vmapL2G;
-			//vmapL2G.clear();
-			U32 startVert = verts->size();
+			//U32 startVert = verts->size();
 			for(k = 0; k < curIndices->size()-startIndex; k++){
 				std::map<U16,U16>::iterator it = vmapL2G->find((*curIndices)[startIndex+k]);
 				bool alreadyStored = it != vmapL2G->end();
@@ -489,11 +465,6 @@ osg::Node *  DIFInteriorObj::buildInteriorNode(){
 		dfUVs->dirty();
 		lmUVs->dirty();
 		
-		
-		/*F32* pts = verts->getDataPointer();
-		 for(j = 0; j<verts->size(); j++){
-		 osg::notify(DEBUG_INFO) << "vert " << pts[3*j] << " " << pts[3*j+1] << " " << pts[3*j+2] << std::endl;
-		 }//*/
 		
 		for(j = 0; j < n*numLights; j++){
 			if(mlsIndices[j] != NULL){
@@ -567,13 +538,13 @@ osg::Node *  DIFInteriorObj::buildInteriorNode(){
 				meshI->addDrawable(curGeo);
 			}
 		}
-		//osg::Matrixf meshTransform = csm->transform;
-		//meshTransform.scale(csm->scale);
-		//osg::MatrixTransform* meshTransformGroup = new osg::MatrixTransform(meshTransform);
-		//meshTransformGroup->addChild(meshI);
+		osg::Matrixf meshTransform = csm->transform;
+		meshTransform.scale(csm->scale);
+		osg::MatrixTransform* meshTransformGroup = new osg::MatrixTransform(meshTransform);
+		meshTransformGroup->addChild(meshI);
 		//if(i == 4)
-		//intnode_root->addChild(meshTransformGroup);
-		intnode_root->addChild(meshI);
+		intnode_root->addChild(meshTransformGroup);
+		//intnode_root->addChild(meshI);
 		osg::notify(DEBUG_INFO)<< verts->size() << " vertices for mesh " << i << std::endl;
 		delete [] mlsIndices;
 		delete [] vmaps;
@@ -1046,10 +1017,10 @@ void DIFReader::readCSMesh(osgDB::ifstream * mapFile, DIFInteriorObj::CSMesh * c
 	csm->bounds.set(tmp1, tmp2);
 	
 	osg::notify(DEBUG_INFO) << "\t setting transform" << std::endl;
-	F32 mat[16];
+	F32 mat[16]; 
 	for(i = 0; i < 16; i++){
-		mapFile->read((S8*)&mat[i],sizeof(F32));
-		convertLEndianToHost(&mat[i]);
+		mapFile->read((S8*)&mat[4*(i % 4) + (i/4)],sizeof(F32));
+		convertLEndianToHost(&mat[4*(i % 4) + (i/4)]);
 	}
 	csm->transform.set(mat);
 	
@@ -1315,6 +1286,7 @@ bool DIFReader::readDIO(osgDB::ifstream * mapFile, DIFInteriorObj * curLevel){
 	osg::notify(DEBUG_INFO) << "reading " << j << " texGenEQs" << std::endl;
 	
 	DTexGen tmp_texgen;
+//	osg::notify(DEBUG_INFO) << "PYSPLIT" << std::endl;
 	for(i = 0; i < curLevel->texGenEQs.capacity(); i++){
 		/*readVec(mapFile, &tmp1);
 		mapFile->read((S8*)&tmpf, sizeof(F32));
@@ -1329,13 +1301,14 @@ bool DIFReader::readDIO(osgDB::ifstream * mapFile, DIFInteriorObj * curLevel){
 		curLevel->texGenEQs[i]->setPlane(osg::TexGen::T, plane2);*/
 		readVec(mapFile, &tmp_texgen.xPlane);
 		readVec(mapFile, &tmp_texgen.yPlane);
-		if(i < 10){
-			osg::notify(DEBUG_INFO) << "\t" << tmp_texgen.xPlane.x() << " " << tmp_texgen.xPlane.y() << " " << tmp_texgen.xPlane.z() << " " << tmp_texgen.xPlane.w() << std::endl;
-			osg::notify(DEBUG_INFO) << "\t" << tmp_texgen.yPlane.x() << " " << tmp_texgen.yPlane.y() << " " << tmp_texgen.yPlane.z() << " " << tmp_texgen.yPlane.w() << std::endl;
-			osg::notify(DEBUG_INFO) << std::endl;
-		}
+		//if(i < 10){
+		//	osg::notify(DEBUG_INFO) << "\t" << tmp_texgen.xPlane.x() << " " << tmp_texgen.xPlane.y() << " " << tmp_texgen.xPlane.z() << " " << tmp_texgen.xPlane.w() << std::endl;
+		//	osg::notify(DEBUG_INFO) << "\t" << tmp_texgen.yPlane.x() << " " << tmp_texgen.yPlane.y() << " " << tmp_texgen.yPlane.z() << " " << tmp_texgen.yPlane.w() << std::endl;
+		//	osg::notify(DEBUG_INFO) << std::endl;
+		//}
 		curLevel->texGenEQs.push_back(tmp_texgen);
 	}
+//	osg::notify(DEBUG_INFO) << "PYSPLIT" << std::endl;
 	
 	
 	mapFile->read((S8*)&j, sizeof(U32));
