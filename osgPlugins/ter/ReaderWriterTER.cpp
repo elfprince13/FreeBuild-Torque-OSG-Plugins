@@ -3,7 +3,7 @@
  *  OpenSceneGraph
  *
  *  Created by Thomas Dickerson on 12/22/10.
- *  Copyright 2010 Vermont Sustainable Heating Initiative. All rights reserved.
+ *  Copyright 2010 Thomas Dickerson. All rights reserved.
  *
  */
 
